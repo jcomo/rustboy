@@ -21,51 +21,51 @@ impl Registers {
         self.pc
     }
 
-    fn get_af(&self) -> u16 {
-        self.get_combo(self.a, u8::from(&self.f))
+    pub fn get_af(&self) -> u16 {
+        self.get_word(self.a, u8::from(&self.f))
     }
 
-    fn set_af(&mut self, value: u16) {
-        self.a = self.get_upper(value);
-        self.f = Flags::from(self.get_lower(value));
+    pub fn set_af(&mut self, value: u16) {
+        self.a = self.get_msb(value);
+        self.f = Flags::from(self.get_lsb(value));
     }
 
-    fn get_bc(&self) -> u16 {
-        self.get_combo(self.b, self.c)
+    pub fn get_bc(&self) -> u16 {
+        self.get_word(self.b, self.c)
     }
 
-    fn set_bc(&mut self, value: u16) {
-        self.b = self.get_upper(value);
-        self.c = self.get_lower(value);
+    pub fn set_bc(&mut self, value: u16) {
+        self.b = self.get_msb(value);
+        self.c = self.get_lsb(value);
     }
 
-    fn get_de(&self) -> u16 {
-        self.get_combo(self.d, self.e)
+    pub fn get_de(&self) -> u16 {
+        self.get_word(self.d, self.e)
     }
 
-    fn set_de(&mut self, value: u16) {
-        self.d = self.get_upper(value);
-        self.e = self.get_lower(value);
+    pub fn set_de(&mut self, value: u16) {
+        self.d = self.get_msb(value);
+        self.e = self.get_lsb(value);
     }
 
-    fn get_hl(&self) -> u16 {
-        self.get_combo(self.h, self.l)
+    pub fn get_hl(&self) -> u16 {
+        self.get_word(self.h, self.l)
     }
 
-    fn set_hl(&mut self, value: u16) {
-        self.h = self.get_upper(value);
-        self.l = self.get_lower(value);
+    pub fn set_hl(&mut self, value: u16) {
+        self.h = self.get_msb(value);
+        self.l = self.get_lsb(value);
     }
 
-    fn get_combo(&self, upper: u8, lower: u8) -> u16 {
+    fn get_word(&self, upper: u8, lower: u8) -> u16 {
         (upper as u16) << 8 | lower as u16
     }
 
-    fn get_upper(&self, value: u16) -> u8 {
+    fn get_msb(&self, value: u16) -> u8 {
         ((value & 0xFF00) >> 8) as u8
     }
 
-    fn get_lower(&self, value: u16) -> u8 {
+    fn get_lsb(&self, value: u16) -> u8 {
         (value & 0xFF) as u8
     }
 }
