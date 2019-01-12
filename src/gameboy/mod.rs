@@ -10,7 +10,9 @@ impl GameBoy {
     pub fn load(cartridge: Vec<u8>) -> GameBoy {
         // TODO: check for catridge too large?
         println!("{:?}", cartridge);
-        GameBoy { cpu: CPU {} }
+        GameBoy {
+            cpu: CPU::default(),
+        }
     }
 
     pub fn run(&self) {

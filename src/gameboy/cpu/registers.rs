@@ -1,28 +1,24 @@
 use super::flags::Flags;
 
-struct Registers {
-    a: u8,
-    b: u8,
-    c: u8,
-    d: u8,
-    e: u8,
-    f: Flags,
-    h: u8,
-    l: u8,
+#[derive(Debug, Default)]
+pub struct Registers {
+    pub pc: u16,
+    pub a: u8,
+    pub b: u8,
+    pub c: u8,
+    pub d: u8,
+    pub e: u8,
+    pub f: Flags,
+    pub h: u8,
+    pub l: u8,
 }
 
 impl Registers {
-    fn blank() -> Registers {
-        Registers {
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-            e: 0,
-            f: Flags::blank(),
-            h: 0,
-            l: 0,
-        }
+    /// Increments the program counter and returns the new value
+    pub fn increment_pc(&mut self) -> u16 {
+        // TODO: should this wrap?
+        self.pc = self.pc + 1;
+        self.pc
     }
 
     fn get_af(&self) -> u16 {
@@ -79,8 +75,20 @@ mod test {
     use super::*;
 
     #[test]
+    fn incr_pc() {
+        let mut regs = Registers::default();
+
+        assert_eq!(regs.pc, 0);
+
+        let new_pc = regs.increment_pc();
+
+        assert_eq!(new_pc, 1);
+        assert_eq!(regs.pc, 1);
+    }
+
+    #[test]
     fn af_combo() {
-        let mut regs = Registers::blank();
+        let mut regs = Registers::default();
 
         regs.set_af(0xF1A0);
 
@@ -94,7 +102,7 @@ mod test {
 
     #[test]
     fn bc_combo() {
-        let mut regs = Registers::blank();
+        let mut regs = Registers::default();
 
         regs.set_bc(0xF123);
 
@@ -105,7 +113,7 @@ mod test {
 
     #[test]
     fn de_combo() {
-        let mut regs = Registers::blank();
+        let mut regs = Registers::default();
 
         regs.set_de(0xF123);
 
@@ -116,7 +124,7 @@ mod test {
 
     #[test]
     fn hl_combo() {
-        let mut regs = Registers::blank();
+        let mut regs = Registers::default();
 
         regs.set_hl(0xF123);
 

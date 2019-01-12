@@ -1,20 +1,9 @@
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Flags {
     pub zero: bool,
     pub subtract: bool,
     pub half_carry: bool,
     pub carry: bool,
-}
-
-impl Flags {
-    pub fn blank() -> Flags {
-        Flags {
-            zero: false,
-            subtract: false,
-            half_carry: false,
-            carry: false,
-        }
-    }
 }
 
 const ZERO_FLAG_BYTE_POSITION: u8 = 7;
