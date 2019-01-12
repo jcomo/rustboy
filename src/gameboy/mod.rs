@@ -12,8 +12,6 @@ pub struct GameBoy {
 impl GameBoy {
     pub fn load(cartridge: &Vec<u8>) -> GameBoy {
         // TODO: check for catridge too large?
-        println!("{:?}", cartridge);
-        println!("{:?}", cartridge.len());
         let rom = cartridge.to_owned();
 
         GameBoy {
@@ -23,9 +21,16 @@ impl GameBoy {
     }
 
     pub fn run(&mut self) {
-        println!("GameBoy is running!");
-        while true {
+        let mut i = 0;
+        println!("[start] boot rom");
+        loop {
+            if i >= 256 {
+                println!("[end] boot rom");
+                break;
+            }
+
             self.cpu.step(&mut self.mmu);
+            i += 1;
         }
     }
 }

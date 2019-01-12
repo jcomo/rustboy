@@ -17,6 +17,6 @@ impl CPU {
     pub fn step(&mut self, memory: &mut MemoryBus) {
         let old_pc = self.registers.increment_pc();
         let op_code = memory.get_byte(old_pc);
-        println!("op code: {}", op_code);
+        println!("op code: 0x{:X}", op_code);
     }
 }
