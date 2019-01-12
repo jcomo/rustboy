@@ -7,7 +7,13 @@ pub struct GameBoy {
 }
 
 impl GameBoy {
-    pub fn run() {
+    pub fn load(cartridge: Vec<u8>) -> GameBoy {
+        // TODO: check for catridge too large?
+        println!("{:?}", cartridge);
+        GameBoy { cpu: CPU {} }
+    }
+
+    pub fn run(&self) {
         println!("GameBoy is running!");
     }
 }
