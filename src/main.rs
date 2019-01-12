@@ -1,3 +1,7 @@
-mod cpu;
+mod gameboy;
 
-fn main() {}
+use crate::gameboy::GameBoy;
+
+fn main() {
+    GameBoy::run();
+}
