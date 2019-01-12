@@ -18,5 +18,5 @@ fn main() {
         process::exit(1);
     });
 
-    GameBoy::load(data).run();
+    GameBoy::load(&data).run();
 }

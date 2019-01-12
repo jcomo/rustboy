@@ -14,11 +14,12 @@ pub struct Registers {
 }
 
 impl Registers {
-    /// Increments the program counter and returns the new value
+    /// Increments the program counter and returns the old value
     pub fn increment_pc(&mut self) -> u16 {
         // TODO: should this wrap?
+        let old_pc = self.pc;
         self.pc = self.pc + 1;
-        self.pc
+        old_pc
     }
 
     pub fn get_af(&self) -> u16 {
@@ -80,9 +81,9 @@ mod test {
 
         assert_eq!(regs.pc, 0);
 
-        let new_pc = regs.increment_pc();
+        let old_pc = regs.increment_pc();
 
-        assert_eq!(new_pc, 1);
+        assert_eq!(old_pc, 0);
         assert_eq!(regs.pc, 1);
     }
 

@@ -8,18 +8,15 @@ pub trait MemoryBus {
     fn set_byte(&mut self, address: u16, byte: u8);
 }
 
+#[derive(Default)]
 pub struct CPU {
     registers: Registers,
-    memory: Box<MemoryBus>,
 }
 
 impl CPU {
-    pub fn new(memory: Box<MemoryBus>) -> CPU {
-        CPU {
-            registers: Registers::default(),
-            memory: memory,
-        }
+    pub fn step(&mut self, memory: &mut MemoryBus) {
+        let old_pc = self.registers.increment_pc();
+        let op_code = memory.get_byte(old_pc);
+        println!("op code: {}", op_code);
     }
-
-    pub fn step(&self) {}
 }
