@@ -3,6 +3,7 @@ use super::flags::Flags;
 #[derive(Debug, Default)]
 pub struct Registers {
     pub pc: u16,
+    pub sp: u16,
     pub a: u8,
     pub b: u8,
     pub c: u8,
