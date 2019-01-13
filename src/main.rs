@@ -1,3 +1,4 @@
+mod bits;
 mod gameboy;
 
 use crate::gameboy::GameBoy;

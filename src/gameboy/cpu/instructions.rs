@@ -1,8 +1,17 @@
+use crate::bits;
+
+use super::flags::Flags;
 use super::MemoryBus;
 use super::CPU;
 
 pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
     match op {
+        0x21 => {
+            debug("SLA C");
+            let (value, flags) = shift_left(cpu.registers.c);
+            cpu.registers.c = value;
+            cpu.registers.f = flags;
+        }
         0x31 => {
             debug("LD SP, nn");
             let word = cpu.get_word(memory);
@@ -10,11 +19,13 @@ pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         }
         0xAF => {
             debug("XOR A, A");
-            let result = xor(cpu, cpu.registers.a, cpu.registers.a);
-            cpu.registers.a = result;
+            let (value, flags) = xor(cpu.registers.a, cpu.registers.a);
+            cpu.registers.a = value;
+            cpu.registers.f = flags;
         }
-        0x21 => {
-            debug("SLA C");
+        0xFF => {
+            debug("RST 38H");
+            reset(cpu, memory, 0x38);
         }
         _ => {
             panic!(format!("Unknown operation 0x{:X}", op));
@@ -22,22 +33,40 @@ pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
     }
 }
 
-fn xor(cpu: &mut CPU, left: u8, right: u8) -> u8 {
+fn xor(left: u8, right: u8) -> (u8, Flags) {
     let result = left ^ right;
-    cpu.registers.f.zero = result == 0;
-    cpu.registers.f.subtract = false;
-    cpu.registers.f.half_carry = false;
-    cpu.registers.f.carry = false;
-    result
+    let flags = Flags {
+        zero: result == 0,
+        subtract: false,
+        half_carry: false,
+        carry: false,
+    };
+
+    (result, flags)
 }
 
-fn shift_left(cpu: &mut CPU, value: u8) -> u8 {
+fn shift_left(value: u8) -> (u8, Flags) {
     let result = value << 1;
-    cpu.registers.f.zero = result == 0;
-    cpu.registers.f.subtract = false;
-    cpu.registers.f.half_carry = false;
-    cpu.registers.f.carry = result < value;
-    result
+    let flags = Flags {
+        zero: result == 0,
+        subtract: false,
+        half_carry: false,
+        carry: result < value,
+    };
+
+    (result, flags)
+}
+
+fn push(cpu: &mut CPU, memory: &mut MemoryBus, address: u16) {
+    cpu.registers.decrement_sp();
+    memory.set_byte(cpu.registers.sp, bits::msb_16(address));
+    cpu.registers.decrement_sp();
+    memory.set_byte(cpu.registers.sp, bits::lsb_16(address));
+}
+
+fn reset(cpu: &mut CPU, memory: &mut MemoryBus, new_pc: u16) {
+    push(cpu, memory, cpu.registers.pc);
+    cpu.registers.pc = new_pc;
 }
 
 fn debug(label: &'static str) {

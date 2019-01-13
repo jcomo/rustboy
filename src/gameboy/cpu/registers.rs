@@ -1,3 +1,5 @@
+use crate::bits;
+
 use super::flags::Flags;
 
 #[derive(Debug, Default)]
@@ -23,13 +25,23 @@ impl Registers {
         old_pc
     }
 
+    /// Increments the stack pointer
+    pub fn increment_sp(&mut self) {
+        self.sp += 1;
+    }
+
+    /// Decrements the stack pointer
+    pub fn decrement_sp(&mut self) {
+        self.sp -= 1;
+    }
+
     pub fn get_af(&self) -> u16 {
         self.get_word(self.a, u8::from(&self.f))
     }
 
     pub fn set_af(&mut self, value: u16) {
-        self.a = self.get_msb(value);
-        self.f = Flags::from(self.get_lsb(value));
+        self.a = bits::msb_16(value);
+        self.f = Flags::from(bits::lsb_16(value));
     }
 
     pub fn get_bc(&self) -> u16 {
@@ -37,8 +49,8 @@ impl Registers {
     }
 
     pub fn set_bc(&mut self, value: u16) {
-        self.b = self.get_msb(value);
-        self.c = self.get_lsb(value);
+        self.b = bits::msb_16(value);
+        self.c = bits::lsb_16(value);
     }
 
     pub fn get_de(&self) -> u16 {
@@ -46,8 +58,8 @@ impl Registers {
     }
 
     pub fn set_de(&mut self, value: u16) {
-        self.d = self.get_msb(value);
-        self.e = self.get_lsb(value);
+        self.d = bits::msb_16(value);
+        self.e = bits::lsb_16(value);
     }
 
     pub fn get_hl(&self) -> u16 {
@@ -55,20 +67,12 @@ impl Registers {
     }
 
     pub fn set_hl(&mut self, value: u16) {
-        self.h = self.get_msb(value);
-        self.l = self.get_lsb(value);
+        self.h = bits::msb_16(value);
+        self.l = bits::lsb_16(value);
     }
 
     fn get_word(&self, upper: u8, lower: u8) -> u16 {
         (upper as u16) << 8 | lower as u16
-    }
-
-    fn get_msb(&self, value: u16) -> u8 {
-        ((value & 0xFF00) >> 8) as u8
-    }
-
-    fn get_lsb(&self, value: u16) -> u8 {
-        (value & 0xFF) as u8
     }
 }
 
@@ -77,7 +81,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn incr_pc() {
+    fn increment_pc() {
         let mut regs = Registers::default();
 
         assert_eq!(regs.pc, 0);
@@ -86,6 +90,26 @@ mod test {
 
         assert_eq!(old_pc, 0);
         assert_eq!(regs.pc, 1);
+    }
+
+    #[test]
+    fn increment_sp() {
+        let mut regs = Registers::default();
+        regs.sp = 0x1;
+
+        regs.increment_sp();
+
+        assert_eq!(regs.sp, 2);
+    }
+
+    #[test]
+    fn decrement_sp() {
+        let mut regs = Registers::default();
+        regs.sp = 0x1;
+
+        regs.decrement_sp();
+
+        assert_eq!(regs.sp, 0);
     }
 
     #[test]
