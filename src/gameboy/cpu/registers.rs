@@ -36,7 +36,7 @@ impl Registers {
     }
 
     pub fn get_af(&self) -> u16 {
-        self.get_word(self.a, u8::from(&self.f))
+        bits::to_word(self.a, u8::from(&self.f))
     }
 
     pub fn set_af(&mut self, value: u16) {
@@ -45,7 +45,7 @@ impl Registers {
     }
 
     pub fn get_bc(&self) -> u16 {
-        self.get_word(self.b, self.c)
+        bits::to_word(self.b, self.c)
     }
 
     pub fn set_bc(&mut self, value: u16) {
@@ -54,7 +54,7 @@ impl Registers {
     }
 
     pub fn get_de(&self) -> u16 {
-        self.get_word(self.d, self.e)
+        bits::to_word(self.d, self.e)
     }
 
     pub fn set_de(&mut self, value: u16) {
@@ -63,7 +63,7 @@ impl Registers {
     }
 
     pub fn get_hl(&self) -> u16 {
-        self.get_word(self.h, self.l)
+        bits::to_word(self.h, self.l)
     }
 
     pub fn set_hl(&mut self, value: u16) {
@@ -71,8 +71,11 @@ impl Registers {
         self.l = bits::lsb_16(value);
     }
 
-    fn get_word(&self, upper: u8, lower: u8) -> u16 {
-        (upper as u16) << 8 | lower as u16
+    /// Increments the HL register; returns the old value
+    pub fn increment_hl(&mut self) -> u16 {
+        let old_value = self.get_hl();
+        self.set_hl(bits::add_16(old_value, 1));
+        old_value
     }
 }
 
@@ -157,5 +160,8 @@ mod test {
         assert_eq!(regs.h, 0xF1);
         assert_eq!(regs.l, 0x23);
         assert_eq!(regs.get_hl(), 0xF123);
+
+        assert_eq!(regs.increment_hl(), 0xF123);
+        assert_eq!(regs.get_hl(), 0xF124);
     }
 }

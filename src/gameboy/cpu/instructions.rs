@@ -6,11 +6,21 @@ use super::CPU;
 
 pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
     match op {
+        0x08 => {
+            debug("LD (nn), SP");
+            let address = cpu.get_word(memory);
+            memory.set_word(address, cpu.registers.sp);
+        }
         0x21 => {
             debug("SLA C");
             let (value, flags) = shift_left(cpu.registers.c);
             cpu.registers.c = value;
             cpu.registers.f = flags;
+        }
+        0x22 => {
+            debug("LD (HLI), A");
+            let address = cpu.registers.increment_hl();
+            memory.set_byte(address, cpu.registers.a);
         }
         0x31 => {
             debug("LD SP, nn");
