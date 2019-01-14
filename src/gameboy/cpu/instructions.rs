@@ -5,6 +5,7 @@ use super::CPU;
 
 pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
     match op {
+        0x00 => debug("NOP"),
         0x03 => {
             debug("INC BC");
             cpu.registers.increment_bc();
@@ -141,9 +142,8 @@ fn shift_left(cpu: &mut CPU, value: u8) -> u8 {
 
 fn push(cpu: &mut CPU, memory: &mut MemoryBus, address: u16) {
     cpu.registers.decrement_sp();
-    memory.set_byte(cpu.registers.sp, bits::msb_16(address));
     cpu.registers.decrement_sp();
-    memory.set_byte(cpu.registers.sp, bits::lsb_16(address));
+    memory.set_word(cpu.registers.sp, address);
 }
 
 fn reset(cpu: &mut CPU, memory: &mut MemoryBus, new_pc: u16) {
