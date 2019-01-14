@@ -11,16 +11,28 @@ pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         }
         0x05 => {
             debug("DEC B");
-            cpu.registers.b = sub(cpu, cpu.registers.b, 1);
+            cpu.registers.b = dec(cpu, cpu.registers.b);
         }
         0x08 => {
             debug("LD (nn), SP");
             let address = cpu.get_word(memory);
             memory.set_word(address, cpu.registers.sp);
         }
+        0x0D => {
+            debug("DEC C");
+            cpu.registers.c = dec(cpu, cpu.registers.c);
+        }
         0x13 => {
             debug("INC DE");
             cpu.registers.increment_de();
+        }
+        0x15 => {
+            debug("DEC D");
+            cpu.registers.d = dec(cpu, cpu.registers.d);
+        }
+        0x1D => {
+            debug("DEC E");
+            cpu.registers.e = dec(cpu, cpu.registers.e);
         }
         0x21 => {
             debug("SLA C");
@@ -35,6 +47,14 @@ pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("INC HL");
             cpu.registers.increment_hl();
         }
+        0x25 => {
+            debug("DEC H");
+            cpu.registers.h = dec(cpu, cpu.registers.h);
+        }
+        0x2D => {
+            debug("DEC L");
+            cpu.registers.l = dec(cpu, cpu.registers.l);
+        }
         0x31 => {
             debug("LD SP, nn");
             cpu.registers.sp = cpu.get_word(memory);
@@ -42,6 +62,10 @@ pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x33 => {
             debug("INC SP");
             cpu.registers.increment_sp();
+        }
+        0x3D => {
+            debug("DEC A");
+            cpu.registers.a = dec(cpu, cpu.registers.a);
         }
         0xAF => {
             debug("XOR A, A");
@@ -55,6 +79,10 @@ pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             panic!(format!("Unknown operation 0x{:X}", op));
         }
     }
+}
+
+fn dec(cpu: &mut CPU, value: u8) -> u8 {
+    sub(cpu, value, 1)
 }
 
 fn sub(cpu: &mut CPU, value: u8, amount: u8) -> u8 {
