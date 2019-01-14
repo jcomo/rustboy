@@ -19,8 +19,13 @@ pub struct Registers {
 impl Registers {
     /// Increments the program counter; returns the old value
     pub fn increment_pc(&mut self) -> u16 {
+        self.add_pc(1)
+    }
+
+    /// Adds n to the program counter; returns the old value
+    pub fn add_pc(&mut self, n: u8) -> u16 {
         let old_value = self.pc;
-        self.pc = old_value.wrapping_add(1);
+        self.pc = old_value.wrapping_add(n as u16);
         old_value
     }
 

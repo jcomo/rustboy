@@ -34,6 +34,13 @@ pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("DEC E");
             cpu.registers.e = dec(cpu, cpu.registers.e);
         }
+        0x20 => {
+            debug("JR NZ, n");
+            let amount = cpu.get_byte(memory);
+            if !cpu.registers.f.zero {
+                cpu.registers.add_pc(amount);
+            }
+        }
         0x21 => {
             debug("SLA C");
             cpu.registers.c = shift_left(cpu, cpu.registers.c);
@@ -51,9 +58,23 @@ pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("DEC H");
             cpu.registers.h = dec(cpu, cpu.registers.h);
         }
+        0x28 => {
+            debug("JR Z, n");
+            let amount = cpu.get_byte(memory);
+            if cpu.registers.f.zero {
+                cpu.registers.add_pc(amount);
+            }
+        }
         0x2D => {
             debug("DEC L");
             cpu.registers.l = dec(cpu, cpu.registers.l);
+        }
+        0x30 => {
+            debug("JR NC, n");
+            let amount = cpu.get_byte(memory);
+            if !cpu.registers.f.carry {
+                cpu.registers.add_pc(amount);
+            }
         }
         0x31 => {
             debug("LD SP, nn");
@@ -62,6 +83,13 @@ pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x33 => {
             debug("INC SP");
             cpu.registers.increment_sp();
+        }
+        0x38 => {
+            debug("JR C, n");
+            let amount = cpu.get_byte(memory);
+            if cpu.registers.f.carry {
+                cpu.registers.add_pc(amount);
+            }
         }
         0x3D => {
             debug("DEC A");
