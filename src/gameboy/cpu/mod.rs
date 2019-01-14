@@ -11,16 +11,14 @@ pub trait MemoryBus {
     fn set_byte(&mut self, address: u16, byte: u8);
 
     fn get_word(&self, address: u16) -> u16 {
-        let next_address = bits::add_16(address, 1);
         let lsb = self.get_byte(address);
-        let msb = self.get_byte(next_address);
+        let msb = self.get_byte(address.wrapping_add(1));
         bits::to_word(lsb, msb)
     }
 
     fn set_word(&mut self, address: u16, word: u16) {
-        let next_address = bits::add_16(address, 1);
         self.set_byte(address, bits::lsb_16(word));
-        self.set_byte(next_address, bits::msb_16(word));
+        self.set_byte(address.wrapping_add(1), bits::msb_16(word));
     }
 }
 

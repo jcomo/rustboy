@@ -17,22 +17,25 @@ pub struct Registers {
 }
 
 impl Registers {
-    /// Increments the program counter and returns the old value
+    /// Increments the program counter; returns the old value
     pub fn increment_pc(&mut self) -> u16 {
-        // TODO: should this wrap?
-        let old_pc = self.pc;
-        self.pc = self.pc + 1;
-        old_pc
+        let old_value = self.pc;
+        self.pc = old_value.wrapping_add(1);
+        old_value
     }
 
-    /// Increments the stack pointer
-    pub fn increment_sp(&mut self) {
-        self.sp += 1;
+    /// Increments the stack pointer; returns the old value
+    pub fn increment_sp(&mut self) -> u16 {
+        let old_value = self.sp;
+        self.sp = old_value.wrapping_add(1);
+        old_value
     }
 
-    /// Decrements the stack pointer
-    pub fn decrement_sp(&mut self) {
-        self.sp -= 1;
+    /// Decrements the stack pointer; returns the old value
+    pub fn decrement_sp(&mut self) -> u16 {
+        let old_value = self.sp;
+        self.sp = old_value.wrapping_sub(1);
+        old_value
     }
 
     pub fn get_af(&self) -> u16 {
@@ -53,6 +56,13 @@ impl Registers {
         self.c = bits::lsb_16(value);
     }
 
+    /// Increments the BC register; returns the old value
+    pub fn increment_bc(&mut self) -> u16 {
+        let old_value = self.get_bc();
+        self.set_bc(old_value.wrapping_add(1));
+        old_value
+    }
+
     pub fn get_de(&self) -> u16 {
         bits::to_word(self.d, self.e)
     }
@@ -60,6 +70,13 @@ impl Registers {
     pub fn set_de(&mut self, value: u16) {
         self.d = bits::msb_16(value);
         self.e = bits::lsb_16(value);
+    }
+
+    /// Increments the DE register; returns the old value
+    pub fn increment_de(&mut self) -> u16 {
+        let old_value = self.get_de();
+        self.set_de(old_value.wrapping_add(1));
+        old_value
     }
 
     pub fn get_hl(&self) -> u16 {
@@ -74,7 +91,7 @@ impl Registers {
     /// Increments the HL register; returns the old value
     pub fn increment_hl(&mut self) -> u16 {
         let old_value = self.get_hl();
-        self.set_hl(bits::add_16(old_value, 1));
+        self.set_hl(old_value.wrapping_add(1));
         old_value
     }
 }
@@ -86,12 +103,9 @@ mod test {
     #[test]
     fn increment_pc() {
         let mut regs = Registers::default();
+        regs.pc = 0;
 
-        assert_eq!(regs.pc, 0);
-
-        let old_pc = regs.increment_pc();
-
-        assert_eq!(old_pc, 0);
+        assert_eq!(regs.increment_pc(), 0);
         assert_eq!(regs.pc, 1);
     }
 
@@ -100,8 +114,7 @@ mod test {
         let mut regs = Registers::default();
         regs.sp = 0x1;
 
-        regs.increment_sp();
-
+        assert_eq!(regs.increment_sp(), 1);
         assert_eq!(regs.sp, 2);
     }
 
@@ -110,8 +123,7 @@ mod test {
         let mut regs = Registers::default();
         regs.sp = 0x1;
 
-        regs.decrement_sp();
-
+        assert_eq!(regs.decrement_sp(), 1);
         assert_eq!(regs.sp, 0);
     }
 
@@ -138,6 +150,9 @@ mod test {
         assert_eq!(regs.b, 0xF1);
         assert_eq!(regs.c, 0x23);
         assert_eq!(regs.get_bc(), 0xF123);
+
+        assert_eq!(regs.increment_bc(), 0xF123);
+        assert_eq!(regs.get_bc(), 0xF124);
     }
 
     #[test]
@@ -149,6 +164,9 @@ mod test {
         assert_eq!(regs.d, 0xF1);
         assert_eq!(regs.e, 0x23);
         assert_eq!(regs.get_de(), 0xF123);
+
+        assert_eq!(regs.increment_de(), 0xF123);
+        assert_eq!(regs.get_de(), 0xF124);
     }
 
     #[test]
