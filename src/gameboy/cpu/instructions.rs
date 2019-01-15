@@ -43,11 +43,12 @@ pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             }
         }
         0x21 => {
-            debug("SLA C");
-            cpu.registers.c = shift_left(cpu, cpu.registers.c);
+            debug("LD HL, nn");
+            let word = cpu.get_word(memory);
+            cpu.registers.set_hl(word);
         }
         0x22 => {
-            debug("LD (HLI), A");
+            debug("LDI (HL), A");
             let address = cpu.registers.increment_hl();
             memory.set_byte(address, cpu.registers.a);
         }
@@ -80,6 +81,11 @@ pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x31 => {
             debug("LD SP, nn");
             cpu.registers.sp = cpu.get_word(memory);
+        }
+        0x32 => {
+            debug("LDD (HL), A");
+            let address = cpu.registers.decrement_hl();
+            memory.set_byte(address, cpu.registers.a);
         }
         0x33 => {
             debug("INC SP");

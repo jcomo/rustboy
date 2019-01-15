@@ -99,6 +99,13 @@ impl Registers {
         self.set_hl(old_value.wrapping_add(1));
         old_value
     }
+
+    /// Decrements the HL register; returns the old value
+    pub fn decrement_hl(&mut self) -> u16 {
+        let old_value = self.get_hl();
+        self.set_hl(old_value.wrapping_sub(1));
+        old_value
+    }
 }
 
 #[cfg(test)]
@@ -186,5 +193,8 @@ mod test {
 
         assert_eq!(regs.increment_hl(), 0xF123);
         assert_eq!(regs.get_hl(), 0xF124);
+
+        assert_eq!(regs.decrement_hl(), 0xF124);
+        assert_eq!(regs.get_hl(), 0xF123);
     }
 }
