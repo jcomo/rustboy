@@ -27,6 +27,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let result = dec(cpu, cpu.registers.b);
             cpu.registers.b = result;
         }
+        0x06 => {
+            debug("LD B, n");
+            let value = cpu.get_byte(memory);
+            cpu.registers.b = value;
+        }
         0x08 => {
             debug("LD (nn), SP");
             let address = cpu.get_word(memory);
@@ -128,6 +133,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let byte = cpu.get_byte(memory);
             cpu.registers.a = byte;
         }
+        0x4F => {
+            debug("LD C, A");
+            cpu.registers.c = cpu.registers.a;
+        }
         0x77 => {
             debug("LD (HL), A");
             let address = cpu.registers.get_hl();
@@ -137,6 +146,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("XOR A, A");
             let value = xor(cpu, cpu.registers.a, cpu.registers.a);
             cpu.registers.a = value;
+        }
+        0xC5 => {
+            debug("PUSH BC");
+            let address = cpu.registers.get_bc();
+            push(cpu, memory, address);
         }
         0xCD => {
             debug("CALL nn");
@@ -168,6 +182,9 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
 /// Execute commands in the extended instruction space
 fn execute_extended(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
     match op {
+        0x11 => {
+            debug("RL n");
+        }
         0x7C => {
             debug("BIT 7, H");
             test_bit(cpu, cpu.registers.h, 7);
@@ -224,6 +241,17 @@ fn shift_left(cpu: &mut CPU, value: u8) -> u8 {
     cpu.registers.f.subtract = false;
     cpu.registers.f.half_carry = false;
     cpu.registers.f.carry = result < value;
+    result
+}
+
+fn rotate_left_carry(cpu: &mut CPU, value: u8) -> u8 {
+    let carry = bits::from_bool(cpu.registers.f.carry);
+    let result = (value << 1) | carry;
+
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = (value >> 7) != 0;
     result
 }
 

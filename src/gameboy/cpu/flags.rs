@@ -1,3 +1,5 @@
+use crate::bits;
+
 #[derive(Debug, Default)]
 pub struct Flags {
     pub zero: bool,
@@ -13,34 +15,22 @@ const CARRY_FLAG_BYTE_POSITION: u8 = 4;
 
 impl From<&Flags> for u8 {
     fn from(flags: &Flags) -> u8 {
-        bool_to_bit(flags.zero) << ZERO_FLAG_BYTE_POSITION
-            | bool_to_bit(flags.subtract) << SUBTRACT_FLAG_BYTE_POSITION
-            | bool_to_bit(flags.half_carry) << HALF_CARRY_FLAG_BYTE_POSITION
-            | bool_to_bit(flags.carry) << CARRY_FLAG_BYTE_POSITION
+        bits::from_bool(flags.zero) << ZERO_FLAG_BYTE_POSITION
+            | bits::from_bool(flags.subtract) << SUBTRACT_FLAG_BYTE_POSITION
+            | bits::from_bool(flags.half_carry) << HALF_CARRY_FLAG_BYTE_POSITION
+            | bits::from_bool(flags.carry) << CARRY_FLAG_BYTE_POSITION
     }
 }
 
 impl From<u8> for Flags {
     fn from(byte: u8) -> Flags {
         Flags {
-            zero: bit_to_bool(byte >> ZERO_FLAG_BYTE_POSITION),
-            subtract: bit_to_bool(byte >> SUBTRACT_FLAG_BYTE_POSITION),
-            half_carry: bit_to_bool(byte >> HALF_CARRY_FLAG_BYTE_POSITION),
-            carry: bit_to_bool(byte >> CARRY_FLAG_BYTE_POSITION),
+            zero: bits::to_bool(byte >> ZERO_FLAG_BYTE_POSITION),
+            subtract: bits::to_bool(byte >> SUBTRACT_FLAG_BYTE_POSITION),
+            half_carry: bits::to_bool(byte >> HALF_CARRY_FLAG_BYTE_POSITION),
+            carry: bits::to_bool(byte >> CARRY_FLAG_BYTE_POSITION),
         }
     }
-}
-
-fn bool_to_bit(value: bool) -> u8 {
-    if value {
-        1
-    } else {
-        0
-    }
-}
-
-fn bit_to_bool(value: u8) -> bool {
-    value & 0x1 != 0
 }
 
 #[cfg(test)]
