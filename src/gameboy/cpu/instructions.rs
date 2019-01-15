@@ -147,6 +147,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = cpu.registers.get_hl();
             memory.set_byte(address, cpu.registers.a);
         }
+        0x7B => {
+            debug("LD A, E");
+            cpu.registers.a = cpu.registers.e;
+        }
         0xAF => {
             debug("XOR A, A");
             let value = xor(cpu, cpu.registers.a, cpu.registers.a);
@@ -181,6 +185,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("LD (C), A");
             let address = bits::to_word(0xFF, cpu.registers.c);
             memory.set_byte(address, cpu.registers.a);
+        }
+        0xFE => {
+            debug("CP n");
+            let value = cpu.get_byte(memory);
+            sub(cpu, cpu.registers.a, value);
         }
         0xFF => {
             debug("RST 38H");
@@ -232,13 +241,22 @@ fn dec(cpu: &mut CPU, value: u8) -> u8 {
     result
 }
 
-fn add(cpu: &mut CPU, value: u8, amount: u8) -> u8 {
-    let (result, carry) = value.overflowing_add(amount);
-    let half_carry = (value & 0xF) + (amount & 0xF) > 0xF;
+fn add(cpu: &mut CPU, left: u8, right: u8) -> u8 {
+    let (result, carry) = left.overflowing_add(right);
+    let half_carry = (left & 0xF) + (right & 0xF) > 0xF;
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.subtract = false;
     cpu.registers.f.half_carry = half_carry;
     cpu.registers.f.carry = carry;
+    result
+}
+
+fn sub(cpu: &mut CPU, left: u8, right: u8) -> u8 {
+    let result = left.wrapping_sub(right);
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = true;
+    cpu.registers.f.half_carry = (right & 0xF) > (left & 0xF);
+    cpu.registers.f.carry = right > left;
     result
 }
 
