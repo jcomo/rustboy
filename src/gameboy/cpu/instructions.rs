@@ -24,16 +24,27 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         }
         0x05 => {
             debug("DEC B");
-            cpu.registers.b = dec(cpu, cpu.registers.b);
+            let result = dec(cpu, cpu.registers.b);
+            cpu.registers.b = result;
         }
         0x08 => {
             debug("LD (nn), SP");
             let address = cpu.get_word(memory);
             memory.set_word(address, cpu.registers.sp);
         }
+        0x0C => {
+            debug("INC C");
+            let result = inc(cpu, cpu.registers.c);
+            cpu.registers.c = result;
+        }
         0x0D => {
             debug("DEC C");
             cpu.registers.c = dec(cpu, cpu.registers.c);
+        }
+        0x0E => {
+            debug("LD C, n");
+            let byte = cpu.get_byte(memory);
+            cpu.registers.c = byte;
         }
         0x13 => {
             debug("INC DE");
@@ -102,15 +113,26 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("DEC A");
             cpu.registers.a = dec(cpu, cpu.registers.a);
         }
+        0x3E => {
+            debug("LD A, n");
+            let byte = cpu.get_byte(memory);
+            cpu.registers.a = byte;
+        }
         0xAF => {
             debug("XOR A, A");
             cpu.registers.a = xor(cpu, cpu.registers.a, cpu.registers.a);
+        }
+        0xE2 => {
+            debug("LD (C), A");
+            let address = bits::to_word(0xFF, cpu.registers.c);
+            memory.set_byte(address, cpu.registers.a);
         }
         0xFF => {
             debug("RST 38H");
             reset(cpu, memory, 0x38);
         }
         _ => {
+            println!("{:?}", cpu.registers);
             panic!(format!("Unknown operation 0x{:X}", op));
         }
     }
@@ -128,20 +150,35 @@ fn execute_extended(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             test_bit(cpu, cpu.registers.l, 7);
         }
         _ => {
+            println!("{:?}", cpu.registers);
             panic!(format!("Unknown operation 0xCB{:X}", op));
         }
     }
 }
 
-fn dec(cpu: &mut CPU, value: u8) -> u8 {
-    sub(cpu, value, 1)
+fn inc(cpu: &mut CPU, value: u8) -> u8 {
+    let result = value.wrapping_add(1);
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = (value & 0x0F) == 0;
+    result
 }
 
-fn sub(cpu: &mut CPU, value: u8, amount: u8) -> u8 {
-    let result = value.wrapping_sub(amount);
+fn dec(cpu: &mut CPU, value: u8) -> u8 {
+    let result = value.wrapping_sub(1);
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.subtract = true;
-    cpu.registers.f.half_carry = (value & 0x0F) == 0;
+    cpu.registers.f.half_carry = (value & 0x0f) == 0;
+    result
+}
+
+fn add(cpu: &mut CPU, value: u8, amount: u8) -> u8 {
+    let (result, carry) = value.overflowing_add(amount);
+    let half_carry = (value & 0xF) + (amount & 0xF) > 0xF;
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = half_carry;
+    cpu.registers.f.carry = carry;
     result
 }
 

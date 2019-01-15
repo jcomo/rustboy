@@ -21,16 +21,9 @@ impl GameBoy {
     }
 
     pub fn run(&mut self) {
-        let mut i = 0;
         println!("[start] boot rom");
         loop {
-            if i >= 256 {
-                println!("[end] boot rom");
-                break;
-            }
-
             self.cpu.step(&mut self.mmu);
-            i += 1;
         }
     }
 }

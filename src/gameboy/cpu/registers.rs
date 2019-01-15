@@ -140,7 +140,7 @@ mod test {
     }
 
     #[test]
-    fn af_combo() {
+    fn af() {
         let mut regs = Registers::default();
 
         regs.set_af(0xF1A0);
@@ -154,7 +154,7 @@ mod test {
     }
 
     #[test]
-    fn bc_combo() {
+    fn bc() {
         let mut regs = Registers::default();
 
         regs.set_bc(0xF123);
@@ -168,7 +168,7 @@ mod test {
     }
 
     #[test]
-    fn de_combo() {
+    fn de() {
         let mut regs = Registers::default();
 
         regs.set_de(0xF123);
@@ -182,7 +182,7 @@ mod test {
     }
 
     #[test]
-    fn hl_combo() {
+    fn hl() {
         let mut regs = Registers::default();
 
         regs.set_hl(0xF123);
