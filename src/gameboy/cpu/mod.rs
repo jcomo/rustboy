@@ -41,6 +41,6 @@ impl CPU {
     pub fn get_word(&mut self, memory: &MemoryBus) -> u16 {
         let lsb = self.get_byte(memory);
         let msb = self.get_byte(memory);
-        (msb as u16) << 8 | lsb as u16
+        bits::to_word(msb, lsb)
     }
 }
