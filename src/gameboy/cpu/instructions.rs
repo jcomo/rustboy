@@ -4,6 +4,18 @@ use super::MemoryBus;
 use super::CPU;
 
 pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
+    if op == 0xCB {
+        let op = cpu.get_byte(memory);
+        debug(&format!("op code: 0xCB{:X}", op));
+        execute_extended(op, cpu, memory);
+    } else {
+        debug(&format!("op code: 0x{:X}", op));
+        execute_standard(op, cpu, memory);
+    }
+}
+
+/// Execute commands in the standard instruction space
+fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
     match op {
         0x00 => debug("NOP"),
         0x03 => {
@@ -116,6 +128,23 @@ pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
     }
 }
 
+/// Execute commands in the extended instruction space
+fn execute_extended(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
+    match op {
+        0x7C => {
+            debug("BIT 7, H");
+            test_bit(cpu, cpu.registers.h, 7);
+        }
+        0x7D => {
+            debug("BIT 7, L");
+            test_bit(cpu, cpu.registers.l, 7);
+        }
+        _ => {
+            panic!(format!("Unknown operation 0xCB{:X}", op));
+        }
+    }
+}
+
 fn dec(cpu: &mut CPU, value: u8) -> u8 {
     sub(cpu, value, 1)
 }
@@ -146,6 +175,13 @@ fn shift_left(cpu: &mut CPU, value: u8) -> u8 {
     result
 }
 
+fn test_bit(cpu: &mut CPU, value: u8, index: u8) {
+    let result = value & (1 << index);
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = true;
+}
+
 fn push(cpu: &mut CPU, memory: &mut MemoryBus, address: u16) {
     cpu.registers.decrement_sp();
     cpu.registers.decrement_sp();
@@ -157,6 +193,6 @@ fn reset(cpu: &mut CPU, memory: &mut MemoryBus, new_pc: u16) {
     cpu.registers.pc = new_pc;
 }
 
-fn debug(label: &'static str) {
+fn debug(label: &str) {
     println!("{}", label)
 }

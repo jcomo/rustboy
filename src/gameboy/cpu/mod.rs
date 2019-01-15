@@ -30,7 +30,6 @@ pub struct CPU {
 impl CPU {
     pub fn step(&mut self, memory: &mut MemoryBus) {
         let op_code = self.get_byte(memory);
-        println!("op code: 0x{:X}", op_code);
         instructions::execute(op_code, self, memory);
     }
 
