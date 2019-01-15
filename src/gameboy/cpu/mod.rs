@@ -13,7 +13,7 @@ pub trait MemoryBus {
     fn get_word(&self, address: u16) -> u16 {
         let lsb = self.get_byte(address);
         let msb = self.get_byte(address.wrapping_add(1));
-        bits::to_word(lsb, msb)
+        bits::to_word(msb, lsb)
     }
 
     fn set_word(&mut self, address: u16, word: u16) {

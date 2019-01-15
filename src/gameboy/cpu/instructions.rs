@@ -42,6 +42,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let word = cpu.get_word(memory);
             cpu.registers.set_de(word);
         }
+        0x17 => {
+            debug("RLA");
+            let result = rotate_left_carry(cpu, cpu.registers.a);
+            cpu.registers.a = result;
+        }
         0x1A => {
             debug("LD A, (DE)");
             let address = cpu.registers.get_de();
@@ -147,10 +152,19 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let value = xor(cpu, cpu.registers.a, cpu.registers.a);
             cpu.registers.a = value;
         }
+        0xC1 => {
+            debug("POP BC");
+            let value = pop(cpu, memory);
+            cpu.registers.set_bc(value);
+        }
         0xC5 => {
             debug("PUSH BC");
             let address = cpu.registers.get_bc();
             push(cpu, memory, address);
+        }
+        0xC9 => {
+            debug("RET");
+            ret(cpu, memory);
         }
         0xCD => {
             debug("CALL nn");
@@ -183,7 +197,9 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
 fn execute_extended(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
     match op {
         0x11 => {
-            debug("RL n");
+            debug("RL C");
+            let result = rotate_left_carry(cpu, cpu.registers.c);
+            cpu.registers.c = result;
         }
         0x7C => {
             debug("BIT 7, H");
@@ -268,15 +284,25 @@ fn push(cpu: &mut CPU, memory: &mut MemoryBus, address: u16) {
     memory.set_word(cpu.registers.sp, address);
 }
 
+fn pop(cpu: &mut CPU, memory: &mut MemoryBus) -> u16 {
+    let result = memory.get_word(cpu.registers.sp);
+    cpu.registers.increment_sp();
+    cpu.registers.increment_sp();
+    result
+}
+
 fn reset(cpu: &mut CPU, memory: &mut MemoryBus, new_pc: u16) {
     push(cpu, memory, cpu.registers.pc);
     cpu.registers.pc = new_pc;
 }
 
 fn call(cpu: &mut CPU, memory: &mut MemoryBus, address: u16) {
-    cpu.registers.increment_pc();
     push(cpu, memory, cpu.registers.pc);
     cpu.registers.pc = address;
+}
+
+fn ret(cpu: &mut CPU, memory: &mut MemoryBus) {
+    cpu.registers.pc = pop(cpu, memory);
 }
 
 fn jr_cc(cpu: &mut CPU, memory: &mut MemoryBus, check: bool) {
