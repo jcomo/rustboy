@@ -23,9 +23,9 @@ impl Registers {
     }
 
     /// Adds n to the program counter; returns the old value
-    pub fn add_pc(&mut self, n: u8) -> u16 {
+    pub fn add_pc(&mut self, offset: u16) -> u16 {
         let old_value = self.pc;
-        self.pc = old_value.wrapping_add(n as u16);
+        self.pc = old_value.wrapping_add(offset);
         old_value
     }
 

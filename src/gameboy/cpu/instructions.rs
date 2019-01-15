@@ -49,10 +49,7 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         }
         0x20 => {
             debug("JR NZ, n");
-            let amount = cpu.get_byte(memory);
-            if !cpu.registers.f.zero {
-                cpu.registers.add_pc(amount);
-            }
+            jr_cc(cpu, memory, !cpu.registers.f.zero);
         }
         0x21 => {
             debug("LD HL, nn");
@@ -74,10 +71,7 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         }
         0x28 => {
             debug("JR Z, n");
-            let amount = cpu.get_byte(memory);
-            if cpu.registers.f.zero {
-                cpu.registers.add_pc(amount);
-            }
+            jr_cc(cpu, memory, cpu.registers.f.zero);
         }
         0x2D => {
             debug("DEC L");
@@ -85,10 +79,7 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         }
         0x30 => {
             debug("JR NC, n");
-            let amount = cpu.get_byte(memory);
-            if !cpu.registers.f.carry {
-                cpu.registers.add_pc(amount);
-            }
+            jr_cc(cpu, memory, !cpu.registers.f.carry);
         }
         0x31 => {
             debug("LD SP, nn");
@@ -105,10 +96,7 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         }
         0x38 => {
             debug("JR C, n");
-            let amount = cpu.get_byte(memory);
-            if cpu.registers.f.carry {
-                cpu.registers.add_pc(amount);
-            }
+            jr_cc(cpu, memory, cpu.registers.f.carry);
         }
         0x3D => {
             debug("DEC A");
@@ -191,6 +179,15 @@ fn push(cpu: &mut CPU, memory: &mut MemoryBus, address: u16) {
 fn reset(cpu: &mut CPU, memory: &mut MemoryBus, new_pc: u16) {
     push(cpu, memory, cpu.registers.pc);
     cpu.registers.pc = new_pc;
+}
+
+fn jr_cc(cpu: &mut CPU, memory: &mut MemoryBus, check: bool) {
+    let offset = cpu.get_byte(memory) as i8;
+    if check {
+        // Effectively subtracts because of wrap
+        // eg. 0xeb (i8) becomes 0xffeb (u16)
+        cpu.registers.add_pc(offset as u16);
+    }
 }
 
 fn debug(label: &str) {
