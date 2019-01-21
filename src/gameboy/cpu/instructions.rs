@@ -42,30 +42,6 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = cpu.get_word(memory);
             memory.set_word(address, cpu.registers.sp);
         }
-        0x11 => {
-            debug("LD DE, nn");
-            let word = cpu.get_word(memory);
-            cpu.registers.set_de(word);
-        }
-        0x17 => {
-            debug("RLA");
-            let result = rotate_left_carry(cpu, cpu.registers.a);
-            cpu.registers.a = result;
-        }
-        0x18 => {
-            debug("JR n");
-            jr_n(cpu, memory);
-        }
-        0x1A => {
-            debug("LD A, (DE)");
-            let address = cpu.registers.get_de();
-            cpu.registers.a = memory.get_byte(address);
-        }
-        0x1E => {
-            debug("LD E, n");
-            let byte = cpu.get_byte(memory);
-            cpu.registers.e = byte;
-        }
         0x0C => {
             debug("INC C");
             let result = inc(cpu, cpu.registers.c);
@@ -81,6 +57,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let byte = cpu.get_byte(memory);
             cpu.registers.c = byte;
         }
+        0x11 => {
+            debug("LD DE, nn");
+            let word = cpu.get_word(memory);
+            cpu.registers.set_de(word);
+        }
         0x13 => {
             debug("INC DE");
             cpu.registers.increment_de();
@@ -89,9 +70,28 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("DEC D");
             cpu.registers.d = dec(cpu, cpu.registers.d);
         }
+        0x17 => {
+            debug("RLA");
+            let result = rotate_left_carry(cpu, cpu.registers.a);
+            cpu.registers.a = result;
+        }
+        0x18 => {
+            debug("JR n");
+            jr_n(cpu, memory);
+        }
+        0x1A => {
+            debug("LD A, (DE)");
+            let address = cpu.registers.get_de();
+            cpu.registers.a = memory.get_byte(address);
+        }
         0x1D => {
             debug("DEC E");
             cpu.registers.e = dec(cpu, cpu.registers.e);
+        }
+        0x1E => {
+            debug("LD E, n");
+            let byte = cpu.get_byte(memory);
+            cpu.registers.e = byte;
         }
         0x20 => {
             debug("JR NZ, n");
