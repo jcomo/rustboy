@@ -184,6 +184,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = cpu.registers.get_hl();
             memory.set_byte(address, cpu.registers.a);
         }
+        0x78 => {
+            debug("LD A, B");
+            cpu.registers.a = cpu.registers.b;
+        }
         0x7B => {
             debug("LD A, E");
             cpu.registers.a = cpu.registers.e;
@@ -191,6 +195,15 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x7C => {
             debug("LD A, H");
             cpu.registers.a = cpu.registers.h;
+        }
+        0x7D => {
+            debug("LD A, L");
+            cpu.registers.a = cpu.registers.l;
+        }
+        0x86 => {
+            debug("ADD A, (HL)");
+            let byte = memory.get_byte(cpu.registers.get_hl());
+            cpu.registers.a = add(cpu, cpu.registers.a, byte);
         }
         0x90 => {
             debug("SUB B");
@@ -200,6 +213,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("XOR A, A");
             let value = xor(cpu, cpu.registers.a, cpu.registers.a);
             cpu.registers.a = value;
+        }
+        0xBE => {
+            debug("CP (HL)");
+            let byte = memory.get_byte(cpu.registers.get_hl());
+            sub(cpu, cpu.registers.a, byte);
         }
         0xC1 => {
             debug("POP BC");

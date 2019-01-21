@@ -74,6 +74,7 @@ impl MMU {
                 0x47 => self.gpu.set_bg_palette(byte),
                 0x48 => self.gpu.set_object_palette_0(byte),
                 0x49 => self.gpu.set_object_palette_1(byte),
+                0x50 => panic!("Boot ROM check complete!!!"),
                 0x4A => self.gpu.set_window_y(byte),
                 0x4B => self.gpu.set_window_x(byte),
                 0x80...0xFE => self.ram[index] = byte,
