@@ -111,6 +111,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("INC HL");
             cpu.registers.increment_hl();
         }
+        0x24 => {
+            debug("INC H");
+            cpu.registers.h = inc(cpu, cpu.registers.h);
+        }
         0x25 => {
             debug("DEC H");
             cpu.registers.h = dec(cpu, cpu.registers.h);
@@ -178,6 +182,14 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x7B => {
             debug("LD A, E");
             cpu.registers.a = cpu.registers.e;
+        }
+        0x7C => {
+            debug("LD A, H");
+            cpu.registers.a = cpu.registers.h;
+        }
+        0x90 => {
+            debug("SUB B");
+            cpu.registers.a = sub(cpu, cpu.registers.a, cpu.registers.b);
         }
         0xAF => {
             debug("XOR A, A");
