@@ -70,6 +70,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("DEC D");
             cpu.registers.d = dec(cpu, cpu.registers.d);
         }
+        0x16 => {
+            debug("LD D, n");
+            let byte = cpu.get_byte(memory);
+            cpu.registers.d = byte;
+        }
         0x17 => {
             debug("RLA");
             let result = rotate_left_carry(cpu, cpu.registers.a);
