@@ -223,6 +223,10 @@ impl GPU {
     pub fn set_object_palette_1(&mut self, value: u8) {
         panic!("set_object_palette_1(0x{:X})", value)
     }
+
+    pub fn emulate(&mut self) {
+        self.current_line = self.current_line.wrapping_add(1)
+    }
 }
 
 #[cfg(test)]

@@ -24,6 +24,10 @@ impl MMU {
         }
     }
 
+    fn emulate(&mut self) {
+        self.gpu.emulate();
+    }
+
     fn get_byte_internal(&self, address: u16) -> u8 {
         println!("(get_byte) ADDRESS: 0x{:x} (0x{:x})", address, address >> 8);
         let index = address as usize;
@@ -79,11 +83,13 @@ impl MMU {
 }
 
 impl MemoryBus for MMU {
-    fn get_byte(&self, address: u16) -> u8 {
+    fn get_byte(&mut self, address: u16) -> u8 {
+        self.emulate();
         self.get_byte_internal(address)
     }
 
     fn set_byte(&mut self, address: u16, byte: u8) {
+        self.emulate();
         self.set_byte_internal(address, byte)
     }
 }
