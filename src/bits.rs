@@ -26,3 +26,13 @@ pub fn from_bool(value: bool) -> u8 {
 pub fn to_bool(value: u8) -> bool {
     value & 0x1 != 0
 }
+
+/// Returns u8 with value of bit set
+pub fn set(bit: u8, value: bool) -> u8 {
+    from_bool(value) << bit
+}
+
+/// Returns true if the index of the bit is set
+pub fn is_set(value: u8, bit: u8) -> bool {
+    to_bool(value >> bit)
+}
