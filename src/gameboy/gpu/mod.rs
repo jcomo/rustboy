@@ -1,5 +1,13 @@
 use crate::bits;
 
+const OAM_CYCLES: i32 = 21;
+const PIXEL_TRANSFER_CYCLES: i32 = 43;
+const HBLANK_CYCLES: i32 = 50;
+const VBLANK_CYCLES: i32 = 114;
+
+const H_SCANLINE_MAX: u8 = 144;
+const H_SCANLINE_VBLANK_MAX: u8 = 153;
+
 #[derive(Debug, PartialEq)]
 enum Color {
     White = 0b00,
@@ -125,8 +133,28 @@ impl From<&Control> for u8 {
     }
 }
 
+enum Mode {
+    OAM,
+    PixelTransfer,
+    HBlank,
+    VBlank,
+}
+
+impl Mode {
+    fn cycles(&self) -> i32 {
+        match self {
+            Mode::OAM => OAM_CYCLES,
+            Mode::PixelTransfer => PIXEL_TRANSFER_CYCLES,
+            Mode::HBlank => HBLANK_CYCLES,
+            Mode::VBlank => VBLANK_CYCLES,
+        }
+    }
+}
+
 pub struct GPU {
     current_line: u8,
+    current_mode: Mode,
+    remaining_cycles: i32,
     scroll_x: u8,
     scroll_y: u8,
     control: Control,
@@ -137,6 +165,8 @@ impl GPU {
     pub fn new() -> GPU {
         GPU {
             current_line: 0,
+            current_mode: Mode::OAM,
+            remaining_cycles: Mode::OAM.cycles(),
             scroll_x: 0,
             scroll_y: 0,
             control: Control::new(),
@@ -225,8 +255,49 @@ impl GPU {
     }
 
     pub fn emulate(&mut self) {
-        self.current_line = self.current_line.wrapping_add(1)
+        if !self.control.lcd_on {
+            return;
+        }
+
+        self.remaining_cycles -= 1;
+        if self.remaining_cycles > 0 {
+            return;
+        }
+
+        match self.current_mode {
+            Mode::OAM => self.switch_mode(Mode::PixelTransfer),
+            Mode::PixelTransfer => {
+                self.draw_scanline();
+                self.switch_mode(Mode::HBlank);
+            }
+            Mode::HBlank => {
+                self.current_line += 1;
+                if self.current_line < H_SCANLINE_MAX {
+                    self.switch_mode(Mode::OAM);
+                } else {
+                    self.switch_mode(Mode::VBlank);
+                }
+            }
+            Mode::VBlank => {
+                self.current_line += 1;
+                if self.current_line < H_SCANLINE_VBLANK_MAX {
+                    // Reset cycles to be able to continue incrementing scanline
+                    // but do not actually switch mode (no interrupts)
+                    self.remaining_cycles = Mode::VBlank.cycles();
+                } else {
+                    self.current_line = 0;
+                    self.switch_mode(Mode::OAM);
+                }
+            }
+        }
     }
+
+    fn switch_mode(&mut self, mode: Mode) {
+        self.remaining_cycles = mode.cycles();
+        self.current_mode = mode;
+    }
+
+    fn draw_scanline(&mut self) {}
 }
 
 #[cfg(test)]
