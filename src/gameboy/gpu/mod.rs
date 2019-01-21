@@ -362,4 +362,37 @@ mod test {
         assert_eq!(gpu.get_bg_palette(), 0xFF);
         assert_eq!(gpu.bg_palette, palette);
     }
+
+    #[test]
+    fn gpu_control() {
+        let mut gpu = GPU::new();
+        let control = Control::from(0xFF);
+
+        gpu.set_control(0xFF);
+
+        assert_eq!(gpu.get_control(), 0xFF);
+        assert_eq!(gpu.control, control);
+    }
+
+    #[test]
+    fn gpu_scroll() {
+        let mut gpu = GPU::new();
+
+        gpu.set_scroll_x(0x6);
+        assert_eq!(gpu.get_scroll_x(), 0x6);
+
+        gpu.set_scroll_y(0x5);
+        assert_eq!(gpu.get_scroll_y(), 0x5);
+    }
+
+    #[test]
+    fn gpu_current_line() {
+        let mut gpu = GPU::new();
+
+        gpu.current_line = 0x4;
+        assert_eq!(gpu.get_current_line(), 0x4);
+
+        gpu.reset_current_line();
+        assert_eq!(gpu.get_current_line(), 0x0);
+    }
 }
