@@ -29,7 +29,7 @@ impl MMU {
     }
 
     fn get_byte_internal(&self, address: u16) -> u8 {
-        println!("(get_byte) ADDRESS: 0x{:x} (0x{:x})", address, address >> 8);
+        // println!("(get_byte) ADDRESS: 0x{:x} (0x{:x})", address, address >> 8);
         let index = address as usize;
         match address >> 8 {
             0x00 => self.boot_rom[index],
@@ -53,13 +53,15 @@ impl MMU {
     }
 
     fn set_byte_internal(&mut self, address: u16, byte: u8) {
-        println!("(set_byte) ADDRESS: 0x{:x} = 0x{:x}", address, byte);
+        // println!("(set_byte) ADDRESS: 0x{:x} = 0x{:x}", address, byte);
         let index = address as usize;
         match address >> 8 {
             0x00 => self.boot_rom[index] = byte,
             0xff => match address & 0xff {
                 0x11 => println!("SOUND NOT IMPLEMENTED"),
                 0x12 => println!("SOUND NOT IMPLEMENTED"),
+                0x13 => println!("SOUND NOT IMPLEMENTED"),
+                0x14 => println!("SOUND NOT IMPLEMENTED"),
                 0x24 => println!("SOUND NOT IMPLEMENTED"),
                 0x25 => println!("SOUND NOT IMPLEMENTED"),
                 0x26 => println!("SOUND NOT IMPLEMENTED"),

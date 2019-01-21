@@ -388,5 +388,5 @@ fn jr_cc(cpu: &mut CPU, memory: &mut MemoryBus, check: bool) {
 }
 
 fn debug(label: &str) {
-    println!("{}", label)
+    // println!("{}", label)
 }

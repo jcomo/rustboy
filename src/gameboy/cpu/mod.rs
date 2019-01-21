@@ -29,7 +29,6 @@ pub struct CPU {
 
 impl CPU {
     pub fn step(&mut self, memory: &mut MemoryBus) {
-        println!("-------");
         let op_code = self.get_byte(memory);
         instructions::execute(op_code, self, memory);
     }
