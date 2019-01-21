@@ -8,27 +8,22 @@ pub struct Flags {
     pub carry: bool,
 }
 
-const ZERO_FLAG_BYTE_POSITION: u8 = 7;
-const SUBTRACT_FLAG_BYTE_POSITION: u8 = 6;
-const HALF_CARRY_FLAG_BYTE_POSITION: u8 = 5;
-const CARRY_FLAG_BYTE_POSITION: u8 = 4;
-
 impl From<&Flags> for u8 {
     fn from(flags: &Flags) -> u8 {
-        bits::from_bool(flags.zero) << ZERO_FLAG_BYTE_POSITION
-            | bits::from_bool(flags.subtract) << SUBTRACT_FLAG_BYTE_POSITION
-            | bits::from_bool(flags.half_carry) << HALF_CARRY_FLAG_BYTE_POSITION
-            | bits::from_bool(flags.carry) << CARRY_FLAG_BYTE_POSITION
+        bits::set(7, flags.zero)
+            | bits::set(6, flags.subtract)
+            | bits::set(5, flags.half_carry)
+            | bits::set(4, flags.carry)
     }
 }
 
 impl From<u8> for Flags {
     fn from(byte: u8) -> Flags {
         Flags {
-            zero: bits::to_bool(byte >> ZERO_FLAG_BYTE_POSITION),
-            subtract: bits::to_bool(byte >> SUBTRACT_FLAG_BYTE_POSITION),
-            half_carry: bits::to_bool(byte >> HALF_CARRY_FLAG_BYTE_POSITION),
-            carry: bits::to_bool(byte >> CARRY_FLAG_BYTE_POSITION),
+            zero: bits::is_set(byte, 7),
+            subtract: bits::is_set(byte, 6),
+            half_carry: bits::is_set(byte, 5),
+            carry: bits::is_set(byte, 4),
         }
     }
 }
