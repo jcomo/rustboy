@@ -5,8 +5,14 @@ const PIXEL_TRANSFER_CYCLES: i32 = 43;
 const HBLANK_CYCLES: i32 = 50;
 const VBLANK_CYCLES: i32 = 114;
 
+const V_SCANLINE_MAX: u8 = 160;
 const H_SCANLINE_MAX: u8 = 144;
 const H_SCANLINE_VBLANK_MAX: u8 = 153;
+
+// (0x9800 - 0x8000 = 6kB) / 16 bytes per tile
+const NUM_TILES: usize = 384;
+const BYTES_PER_TILE: usize = 16;
+const TILE_MAP_SIZE: usize = 0x400;
 
 #[derive(Debug, PartialEq)]
 enum Color {
@@ -151,6 +157,19 @@ impl Mode {
     }
 }
 
+#[derive(Copy, Clone)]
+struct Tile {
+    bytes: [u8; BYTES_PER_TILE],
+}
+
+impl Tile {
+    fn new() -> Tile {
+        Tile {
+            bytes: [0; BYTES_PER_TILE],
+        }
+    }
+}
+
 pub struct GPU {
     current_line: u8,
     current_mode: Mode,
@@ -159,6 +178,9 @@ pub struct GPU {
     scroll_y: u8,
     control: Control,
     bg_palette: Palette,
+    tile_map_1: [u8; TILE_MAP_SIZE],
+    tile_map_2: [u8; TILE_MAP_SIZE],
+    tile_data: [Tile; NUM_TILES],
 }
 
 impl GPU {
@@ -171,6 +193,9 @@ impl GPU {
             scroll_y: 0,
             control: Control::new(),
             bg_palette: Palette::new(),
+            tile_map_1: [0; TILE_MAP_SIZE],
+            tile_map_2: [0; TILE_MAP_SIZE],
+            tile_data: [Tile::new(); NUM_TILES],
         }
     }
 
@@ -297,7 +322,54 @@ impl GPU {
         self.current_mode = mode;
     }
 
-    fn draw_scanline(&mut self) {}
+    fn draw_scanline(&mut self) {
+        if self.control.bg_on {
+            self.draw_tiles();
+        }
+
+        if self.control.obj_on {
+            self.draw_sprites();
+        }
+    }
+
+    // TODO: handle window drawing
+    fn draw_tiles(&mut self) {
+        let y_pos = self.current_line + self.scroll_y;
+        let tile_row = y_pos / 8;
+
+        for col in 0..V_SCANLINE_MAX {
+            let x_pos = col + self.scroll_x;
+            let tile_col = x_pos / 8;
+
+            let tile = self.get_tile(tile_row, tile_col);
+        }
+    }
+
+    fn draw_sprites(&mut self) {}
+
+    /// Given a tile row and col, returns the address to the tile data
+    /// using all of the proper semantics for lookups from location -> ID -> data.
+    fn get_tile(&self, row: u8, col: u8) -> Tile {
+        // TODO: add option for choosing window tiles
+        let tile_map = if self.control.bg_map {
+            &self.tile_map_1
+        } else {
+            &self.tile_map_2
+        };
+
+        let offset = (row as usize) * 32 + (col as usize);
+        let tile_num = tile_map[offset];
+
+        if self.control.bg_data {
+            self.tile_data[tile_num as usize]
+        } else {
+            let tile_num = tile_num as i8 as u16; // Extend the sign
+            let addr = tile_num.wrapping_add(0x80) as usize;
+
+            // (0x8800 - 0x8000) / 0x10 = 0x80
+            self.tile_data[0x80 + addr]
+        }
+    }
 }
 
 #[cfg(test)]
