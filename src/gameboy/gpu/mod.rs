@@ -168,6 +168,19 @@ impl Tile {
             bytes: [0; BYTES_PER_TILE],
         }
     }
+
+    /// Returns the color data for the given (x, y) pixel in the tile
+    fn color_at(&self, x: u8, y: u8) -> Color {
+        let arr_offset = (y * 2) as usize;
+        let top = self.bytes[arr_offset + 1];
+        let bottom = self.bytes[arr_offset];
+
+        let shift = 7 - x;
+        let msb = (top >> shift) & 0x1;
+        let lsb = (bottom >> shift) & 0x1;
+        let value = (msb << 1) | lsb;
+        Color::from(value)
+    }
 }
 
 pub struct GPU {
@@ -334,22 +347,24 @@ impl GPU {
 
     // TODO: handle window drawing
     fn draw_tiles(&mut self) {
-        let y_pos = self.current_line + self.scroll_y;
+        let y_pos = self.current_line.wrapping_add(self.scroll_y);
         let tile_row = y_pos / 8;
 
         for col in 0..V_SCANLINE_MAX {
-            let x_pos = col + self.scroll_x;
+            let x_pos = col.wrapping_add(self.scroll_x);
             let tile_col = x_pos / 8;
 
             let tile = self.get_tile(tile_row, tile_col);
+            let color = tile.color_at(x_pos % 8, y_pos % 8);
+            // TODO: color lookup
         }
     }
 
     fn draw_sprites(&mut self) {}
 
-    /// Given a tile row and col, returns the address to the tile data
-    /// using all of the proper semantics for lookups from location -> ID -> data.
-    fn get_tile(&self, row: u8, col: u8) -> Tile {
+    /// Given a tile row and col, returns the tile via the proper semantics
+    /// by doing a lookup for the number and then the data using LCDC register
+    fn get_tile(&self, row: u8, col: u8) -> &Tile {
         // TODO: add option for choosing window tiles
         let tile_map = if self.control.bg_map {
             &self.tile_map_1
@@ -357,17 +372,19 @@ impl GPU {
             &self.tile_map_2
         };
 
+        // First, look up the tile number in the mapping
         let offset = (row as usize) * 32 + (col as usize);
         let tile_num = tile_map[offset];
 
+        // Next, use the tile number to find the corresponding data
         if self.control.bg_data {
-            self.tile_data[tile_num as usize]
+            &self.tile_data[tile_num as usize]
         } else {
             let tile_num = tile_num as i8 as u16; // Extend the sign
             let addr = tile_num.wrapping_add(0x80) as usize;
 
             // (0x8800 - 0x8000) / 0x10 = 0x80
-            self.tile_data[0x80 + addr]
+            &self.tile_data[0x80 + addr]
         }
     }
 }
@@ -422,6 +439,23 @@ mod test {
         let control = Control::from(0b01010101);
 
         assert_eq!(u8::from(&control), 0b01010101);
+    }
+
+    #[test]
+    fn tile_color_at() {
+        let mut tile = Tile::new();
+
+        tile.bytes[3] = 0b10101110;
+        tile.bytes[2] = 0b00110101;
+
+        assert_eq!(tile.color_at(0, 1), Color::Dark);
+        assert_eq!(tile.color_at(1, 1), Color::White);
+        assert_eq!(tile.color_at(2, 1), Color::Black);
+        assert_eq!(tile.color_at(3, 1), Color::Light);
+        assert_eq!(tile.color_at(4, 1), Color::Dark);
+        assert_eq!(tile.color_at(5, 1), Color::Black);
+        assert_eq!(tile.color_at(6, 1), Color::Dark);
+        assert_eq!(tile.color_at(7, 1), Color::Light);
     }
 
     #[test]
