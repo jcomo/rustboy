@@ -57,6 +57,15 @@ impl Palette {
             black: Color::White,
         }
     }
+
+    fn map(&self, color: Color) -> Color {
+        match color {
+            Color::White => self.white.clone(),
+            Color::Light => self.light.clone(),
+            Color::Dark => self.dark.clone(),
+            Color::Black => self.black.clone(),
+        }
+    }
 }
 
 impl From<u8> for Palette {
@@ -377,11 +386,10 @@ impl GPU {
         for col in 0..V_SCANLINE_MAX {
             let x_pos = col.wrapping_add(self.scroll_x);
             let tile_col = x_pos / 8;
-
             let tile = self.get_tile(tile_row, tile_col);
-            let color = tile.get_color(y_pos % 8, x_pos % 8);
-            // TODO: color lookup
 
+            let color = tile.get_color(y_pos % 8, x_pos % 8);
+            let color = self.bg_palette.map(color);
             self.display.set_pixel(col, self.current_line, color);
         }
     }

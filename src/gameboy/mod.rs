@@ -5,7 +5,7 @@ mod memory;
 use self::cpu::CPU;
 use self::memory::MMU;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Color {
     White = 0b00,
     Light = 0b01,
