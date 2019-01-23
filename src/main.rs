@@ -2,6 +2,8 @@ mod bits;
 mod gameboy;
 
 use crate::gameboy::GameBoy;
+use crate::gameboy::NoDisplay;
+
 use std::env;
 use std::fs;
 use std::process;
@@ -19,5 +21,6 @@ fn main() {
         process::exit(1);
     });
 
-    GameBoy::load(&data).run();
+    let display = Box::new(NoDisplay::new());
+    GameBoy::load(&data, display).run();
 }

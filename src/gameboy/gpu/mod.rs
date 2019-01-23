@@ -1,4 +1,7 @@
 use crate::bits;
+use crate::gameboy::Color;
+use crate::gameboy::NoDisplay;
+use crate::gameboy::VideoDisplay;
 
 const OAM_CYCLES: i32 = 21;
 const PIXEL_TRANSFER_CYCLES: i32 = 43;
@@ -13,14 +16,6 @@ const H_SCANLINE_VBLANK_MAX: u8 = 153;
 const NUM_TILES: usize = 384;
 const BYTES_PER_TILE: usize = 16;
 const TILE_MAP_SIZE: usize = 0x400;
-
-#[derive(Debug, PartialEq)]
-enum Color {
-    White = 0b00,
-    Light = 0b01,
-    Dark = 0b10,
-    Black = 0b11,
-}
 
 impl From<u8> for Color {
     fn from(byte: u8) -> Color {
@@ -194,10 +189,11 @@ pub struct GPU {
     tile_map_0: [u8; TILE_MAP_SIZE],
     tile_map_1: [u8; TILE_MAP_SIZE],
     tile_data: [Tile; NUM_TILES],
+    display: Box<dyn VideoDisplay>,
 }
 
 impl GPU {
-    pub fn new() -> GPU {
+    pub fn new(display: Box<dyn VideoDisplay>) -> GPU {
         GPU {
             current_line: 0,
             current_mode: Mode::OAM,
@@ -209,6 +205,7 @@ impl GPU {
             tile_map_0: [0; TILE_MAP_SIZE],
             tile_map_1: [0; TILE_MAP_SIZE],
             tile_data: [Tile::new(); NUM_TILES],
+            display: display,
         }
     }
 
@@ -339,6 +336,7 @@ impl GPU {
                 if self.current_line < H_SCANLINE_MAX {
                     self.switch_mode(Mode::OAM);
                 } else {
+                    self.display.vsync();
                     self.switch_mode(Mode::VBlank);
                 }
             }
@@ -383,6 +381,8 @@ impl GPU {
             let tile = self.get_tile(tile_row, tile_col);
             let color = tile.get_color(y_pos % 8, x_pos % 8);
             // TODO: color lookup
+
+            self.display.set_pixel(col, self.current_line, color);
         }
     }
 
@@ -418,6 +418,13 @@ impl GPU {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    impl GPU {
+        fn test() -> GPU {
+            let display = NoDisplay::new();
+            GPU::new(Box::new(display))
+        }
+    }
 
     #[test]
     fn palette_from_u8() {
@@ -486,7 +493,7 @@ mod test {
 
     #[test]
     fn gpu_bg_palette() {
-        let mut gpu = GPU::new();
+        let mut gpu = GPU::test();
         let palette = Palette::from(0xFF);
 
         gpu.set_bg_palette(0xFF);
@@ -497,7 +504,7 @@ mod test {
 
     #[test]
     fn gpu_control() {
-        let mut gpu = GPU::new();
+        let mut gpu = GPU::test();
         let control = Control::from(0xFF);
 
         gpu.set_control(0xFF);
@@ -508,7 +515,7 @@ mod test {
 
     #[test]
     fn gpu_scroll() {
-        let mut gpu = GPU::new();
+        let mut gpu = GPU::test();
 
         gpu.set_scroll_x(0x6);
         assert_eq!(gpu.get_scroll_x(), 0x6);
@@ -519,7 +526,7 @@ mod test {
 
     #[test]
     fn gpu_current_line() {
-        let mut gpu = GPU::new();
+        let mut gpu = GPU::test();
 
         gpu.current_line = 0x4;
         assert_eq!(gpu.get_current_line(), 0x4);

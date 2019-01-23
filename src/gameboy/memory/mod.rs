@@ -3,6 +3,7 @@ mod boot;
 use self::boot::DMG_BIN;
 use crate::gameboy::cpu::MemoryBus;
 use crate::gameboy::gpu::GPU;
+use crate::gameboy::VideoDisplay;
 
 pub struct MMU {
     boot_rom: [u8; 0x100],
@@ -11,7 +12,7 @@ pub struct MMU {
 }
 
 impl MMU {
-    pub fn new(rom: Vec<u8>) -> MMU {
+    pub fn new(rom: Vec<u8>, display: Box<dyn VideoDisplay>) -> MMU {
         let mut ram = [0; 0x10_000];
         for (i, byte) in rom.iter().enumerate() {
             ram[i] = byte.clone();
@@ -20,7 +21,7 @@ impl MMU {
         MMU {
             boot_rom: DMG_BIN,
             ram: ram,
-            gpu: GPU::new(),
+            gpu: GPU::new(display),
         }
     }
 
