@@ -319,9 +319,10 @@ impl GPU {
         tile.bytes[(address % 16) as usize]
     }
 
+    // TODO: test
     pub fn set_tile_row(&mut self, address: u16, byte: u8) {
-        let mut tile = self.tile_data[(address / 16) as usize];
-        tile.bytes[(address % 16) as usize] = byte
+        let mut tile = &mut self.tile_data[(address / 16) as usize];
+        tile.bytes[(address % 16) as usize] = byte;
     }
 
     pub fn emulate(&mut self) {
@@ -401,9 +402,9 @@ impl GPU {
     fn get_tile(&self, row: u8, col: u8) -> &Tile {
         // TODO: add option for choosing window tiles
         let tile_map = if self.control.bg_map {
-            &self.tile_map_0
-        } else {
             &self.tile_map_1
+        } else {
+            &self.tile_map_0
         };
 
         // First, look up the tile number in the mapping
