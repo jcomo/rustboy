@@ -191,8 +191,8 @@ pub struct GPU {
     scroll_y: u8,
     control: Control,
     bg_palette: Palette,
+    tile_map_0: [u8; TILE_MAP_SIZE],
     tile_map_1: [u8; TILE_MAP_SIZE],
-    tile_map_2: [u8; TILE_MAP_SIZE],
     tile_data: [Tile; NUM_TILES],
 }
 
@@ -206,8 +206,8 @@ impl GPU {
             scroll_y: 0,
             control: Control::new(),
             bg_palette: Palette::new(),
+            tile_map_0: [0; TILE_MAP_SIZE],
             tile_map_1: [0; TILE_MAP_SIZE],
-            tile_map_2: [0; TILE_MAP_SIZE],
             tile_data: [Tile::new(); NUM_TILES],
         }
     }
@@ -292,6 +292,32 @@ impl GPU {
         panic!("set_object_palette_1(0x{:X})", value)
     }
 
+    pub fn get_tile_map_0(&self, address: u16) -> u8 {
+        self.tile_map_0[address as usize]
+    }
+
+    pub fn set_tile_map_0(&mut self, address: u16, byte: u8) {
+        self.tile_map_0[address as usize] = byte
+    }
+
+    pub fn get_tile_map_1(&self, address: u16) -> u8 {
+        self.tile_map_1[address as usize]
+    }
+
+    pub fn set_tile_map_1(&mut self, address: u16, byte: u8) {
+        self.tile_map_1[address as usize] = byte
+    }
+
+    pub fn get_tile_row(&self, address: u16) -> u8 {
+        let tile = self.tile_data[(address / 16) as usize];
+        tile.bytes[(address % 16) as usize]
+    }
+
+    pub fn set_tile_row(&mut self, address: u16, byte: u8) {
+        let mut tile = self.tile_data[(address / 16) as usize];
+        tile.bytes[(address % 16) as usize] = byte
+    }
+
     pub fn emulate(&mut self) {
         if !self.control.lcd_on {
             return;
@@ -367,9 +393,9 @@ impl GPU {
     fn get_tile(&self, row: u8, col: u8) -> &Tile {
         // TODO: add option for choosing window tiles
         let tile_map = if self.control.bg_map {
-            &self.tile_map_1
+            &self.tile_map_0
         } else {
-            &self.tile_map_2
+            &self.tile_map_1
         };
 
         // First, look up the tile number in the mapping

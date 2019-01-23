@@ -29,10 +29,12 @@ impl MMU {
     }
 
     fn get_byte_internal(&self, address: u16) -> u8 {
-        // println!("(get_byte) ADDRESS: 0x{:x} (0x{:x})", address, address >> 8);
         let index = address as usize;
         match address >> 8 {
             0x00 => self.boot_rom[index],
+            0x80...0x97 => self.gpu.get_tile_row(address - 0x8000),
+            0x98...0x9B => self.gpu.get_tile_map_0(address - 0x9800),
+            0x9C...0x9F => self.gpu.get_tile_map_1(address - 0x9C00),
             0xff => match address & 0xff {
                 0x40 => self.gpu.get_control(),
                 0x42 => self.gpu.get_scroll_y(),
@@ -48,15 +50,20 @@ impl MMU {
                 0x80...0xFE => self.ram[index],
                 _ => panic!("unsupported read 0x{:X}", address),
             },
-            _ => self.ram[index],
+            _ => {
+                println!("(get_byte) ADDRESS: 0x{:x} (0x{:x})", address, address >> 8);
+                self.ram[index]
+            }
         }
     }
 
     fn set_byte_internal(&mut self, address: u16, byte: u8) {
-        // println!("(set_byte) ADDRESS: 0x{:x} = 0x{:x}", address, byte);
         let index = address as usize;
         match address >> 8 {
             0x00 => self.boot_rom[index] = byte,
+            0x80...0x97 => self.gpu.set_tile_row(address - 0x8000, byte),
+            0x98...0x9B => self.gpu.set_tile_map_0(address - 0x9800, byte),
+            0x9C...0x9F => self.gpu.set_tile_map_1(address - 0x9C00, byte),
             0xff => match address & 0xff {
                 0x11 => println!("SOUND NOT IMPLEMENTED"),
                 0x12 => println!("SOUND NOT IMPLEMENTED"),
@@ -80,7 +87,10 @@ impl MMU {
                 0x80...0xFE => self.ram[index] = byte,
                 _ => panic!("unsupported write 0x{:X} = {:X}", address, byte),
             },
-            _ => self.ram[index] = byte,
+            _ => {
+                println!("(set_byte) ADDRESS: 0x{:x} = 0x{:x}", address, byte);
+                self.ram[index] = byte;
+            }
         }
     }
 }
