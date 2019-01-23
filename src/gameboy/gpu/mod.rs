@@ -319,7 +319,6 @@ impl GPU {
         tile.bytes[(address % 16) as usize]
     }
 
-    // TODO: test
     pub fn set_tile_row(&mut self, address: u16, byte: u8) {
         let mut tile = &mut self.tile_data[(address / 16) as usize];
         tile.bytes[(address % 16) as usize] = byte;
