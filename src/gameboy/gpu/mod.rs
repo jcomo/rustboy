@@ -512,6 +512,23 @@ mod test {
     }
 
     #[test]
+    fn gpu_tile_data() {
+        let mut gpu = GPU::test();
+
+        assert_eq!(gpu.get_tile_row(0x0), 0x0);
+        assert_eq!(gpu.get_tile_row(0x1), 0x0);
+
+        gpu.set_tile_row(0x0, 0xFF);
+        gpu.set_tile_row(0x1, 0xAA);
+
+        assert_eq!(gpu.get_tile_row(0x0), 0xFF);
+        assert_eq!(gpu.get_tile_row(0x1), 0xAA);
+
+        assert_eq!(gpu.tile_data[0x0].bytes[0x0], 0xFF);
+        assert_eq!(gpu.tile_data[0x0].bytes[0x1], 0xAA);
+    }
+
+    #[test]
     fn gpu_control() {
         let mut gpu = GPU::test();
         let control = Control::from(0xFF);
