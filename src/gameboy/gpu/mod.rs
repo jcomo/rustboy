@@ -170,12 +170,12 @@ impl Tile {
     }
 
     /// Returns the color data for the given (x, y) pixel in the tile
-    fn color_at(&self, x: u8, y: u8) -> Color {
-        let arr_offset = (y * 2) as usize;
+    fn get_color(&self, row: u8, col: u8) -> Color {
+        let arr_offset = (row * 2) as usize;
         let top = self.bytes[arr_offset + 1];
         let bottom = self.bytes[arr_offset];
 
-        let shift = 7 - x;
+        let shift = 7 - col;
         let msb = (top >> shift) & 0x1;
         let lsb = (bottom >> shift) & 0x1;
         let value = (msb << 1) | lsb;
@@ -355,7 +355,7 @@ impl GPU {
             let tile_col = x_pos / 8;
 
             let tile = self.get_tile(tile_row, tile_col);
-            let color = tile.color_at(x_pos % 8, y_pos % 8);
+            let color = tile.get_color(y_pos % 8, x_pos % 8);
             // TODO: color lookup
         }
     }
@@ -442,20 +442,20 @@ mod test {
     }
 
     #[test]
-    fn tile_color_at() {
+    fn tile_get_color() {
         let mut tile = Tile::new();
 
         tile.bytes[3] = 0b10101110;
         tile.bytes[2] = 0b00110101;
 
-        assert_eq!(tile.color_at(0, 1), Color::Dark);
-        assert_eq!(tile.color_at(1, 1), Color::White);
-        assert_eq!(tile.color_at(2, 1), Color::Black);
-        assert_eq!(tile.color_at(3, 1), Color::Light);
-        assert_eq!(tile.color_at(4, 1), Color::Dark);
-        assert_eq!(tile.color_at(5, 1), Color::Black);
-        assert_eq!(tile.color_at(6, 1), Color::Dark);
-        assert_eq!(tile.color_at(7, 1), Color::Light);
+        assert_eq!(tile.get_color(1, 0), Color::Dark);
+        assert_eq!(tile.get_color(1, 1), Color::White);
+        assert_eq!(tile.get_color(1, 2), Color::Black);
+        assert_eq!(tile.get_color(1, 3), Color::Light);
+        assert_eq!(tile.get_color(1, 4), Color::Dark);
+        assert_eq!(tile.get_color(1, 5), Color::Black);
+        assert_eq!(tile.get_color(1, 6), Color::Dark);
+        assert_eq!(tile.get_color(1, 7), Color::Light);
     }
 
     #[test]
