@@ -224,6 +224,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let word = pop(cpu, memory);
             cpu.registers.set_bc(word);
         }
+        0xC3 => {
+            debug("JP nn");
+            let address = cpu.get_word(memory);
+            cpu.registers.pc = address;
+        }
         0xC5 => {
             debug("PUSH BC");
             let address = cpu.registers.get_bc();
@@ -259,6 +264,14 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let offset = cpu.get_byte(memory);
             let address = bits::to_word(0xFF, offset);
             cpu.registers.a = memory.get_byte(address);
+        }
+        0xF3 => {
+            debug("DI");
+            cpu.reset_ime();
+        }
+        0xFB => {
+            debug("EI");
+            cpu.set_ime();
         }
         0xFE => {
             debug("CP n");

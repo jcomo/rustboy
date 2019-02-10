@@ -1,5 +1,6 @@
 mod cpu;
 mod gpu;
+mod irq;
 mod memory;
 
 use self::cpu::CPU;

@@ -3,6 +3,7 @@ mod boot;
 use self::boot::DMG_BIN;
 use crate::gameboy::cpu::MemoryBus;
 use crate::gameboy::gpu::GPU;
+use crate::gameboy::irq::IRQ;
 use crate::gameboy::VideoDisplay;
 
 pub struct MMU {
@@ -10,6 +11,7 @@ pub struct MMU {
     boot_rom: [u8; 0x100],
     ram: [u8; 0x10_000],
     gpu: GPU,
+    irq: IRQ,
 }
 
 impl MMU {
@@ -24,6 +26,7 @@ impl MMU {
             boot_rom: DMG_BIN,
             ram: ram,
             gpu: GPU::new(display),
+            irq: IRQ::new(),
         }
     }
 
@@ -105,6 +108,10 @@ impl MMU {
 }
 
 impl MemoryBus for MMU {
+    fn ack_interrupt(&mut self) -> Option<u16> {
+        self.irq.ack_interrupt()
+    }
+
     fn get_byte(&mut self, address: u16) -> u8 {
         self.emulate();
         self.get_byte_internal(address)
