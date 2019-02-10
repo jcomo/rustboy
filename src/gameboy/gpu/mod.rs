@@ -1,20 +1,21 @@
 use crate::bits;
+use crate::gameboy::Color;
+use crate::gameboy::NoDisplay;
+use crate::gameboy::VideoDisplay;
 
 const OAM_CYCLES: i32 = 21;
 const PIXEL_TRANSFER_CYCLES: i32 = 43;
 const HBLANK_CYCLES: i32 = 50;
 const VBLANK_CYCLES: i32 = 114;
 
+const V_SCANLINE_MAX: u8 = 160;
 const H_SCANLINE_MAX: u8 = 144;
 const H_SCANLINE_VBLANK_MAX: u8 = 153;
 
-#[derive(Debug, PartialEq)]
-enum Color {
-    White = 0b00,
-    Light = 0b01,
-    Dark = 0b10,
-    Black = 0b11,
-}
+// (0x9800 - 0x8000 = 6kB) / 16 bytes per tile
+const NUM_TILES: usize = 384;
+const BYTES_PER_TILE: usize = 16;
+const TILE_MAP_SIZE: usize = 0x400;
 
 impl From<u8> for Color {
     fn from(byte: u8) -> Color {
@@ -54,6 +55,15 @@ impl Palette {
             light: Color::White,
             dark: Color::White,
             black: Color::White,
+        }
+    }
+
+    fn map(&self, color: Color) -> Color {
+        match color {
+            Color::White => self.white.clone(),
+            Color::Light => self.light.clone(),
+            Color::Dark => self.dark.clone(),
+            Color::Black => self.black.clone(),
         }
     }
 }
@@ -151,6 +161,32 @@ impl Mode {
     }
 }
 
+#[derive(Copy, Clone)]
+struct Tile {
+    bytes: [u8; BYTES_PER_TILE],
+}
+
+impl Tile {
+    fn new() -> Tile {
+        Tile {
+            bytes: [0; BYTES_PER_TILE],
+        }
+    }
+
+    /// Returns the color data for the given (x, y) pixel in the tile
+    fn get_color(&self, row: u8, col: u8) -> Color {
+        let arr_offset = (row * 2) as usize;
+        let top = self.bytes[arr_offset + 1];
+        let bottom = self.bytes[arr_offset];
+
+        let shift = 7 - col;
+        let msb = (top >> shift) & 0x1;
+        let lsb = (bottom >> shift) & 0x1;
+        let value = (msb << 1) | lsb;
+        Color::from(value)
+    }
+}
+
 pub struct GPU {
     current_line: u8,
     current_mode: Mode,
@@ -159,10 +195,14 @@ pub struct GPU {
     scroll_y: u8,
     control: Control,
     bg_palette: Palette,
+    tile_map_0: [u8; TILE_MAP_SIZE],
+    tile_map_1: [u8; TILE_MAP_SIZE],
+    tile_data: [Tile; NUM_TILES],
+    display: Box<dyn VideoDisplay>,
 }
 
 impl GPU {
-    pub fn new() -> GPU {
+    pub fn new(display: Box<dyn VideoDisplay>) -> GPU {
         GPU {
             current_line: 0,
             current_mode: Mode::OAM,
@@ -171,6 +211,10 @@ impl GPU {
             scroll_y: 0,
             control: Control::new(),
             bg_palette: Palette::new(),
+            tile_map_0: [0; TILE_MAP_SIZE],
+            tile_map_1: [0; TILE_MAP_SIZE],
+            tile_data: [Tile::new(); NUM_TILES],
+            display: display,
         }
     }
 
@@ -254,6 +298,32 @@ impl GPU {
         panic!("set_object_palette_1(0x{:X})", value)
     }
 
+    pub fn get_tile_map_0(&self, address: u16) -> u8 {
+        self.tile_map_0[address as usize]
+    }
+
+    pub fn set_tile_map_0(&mut self, address: u16, byte: u8) {
+        self.tile_map_0[address as usize] = byte
+    }
+
+    pub fn get_tile_map_1(&self, address: u16) -> u8 {
+        self.tile_map_1[address as usize]
+    }
+
+    pub fn set_tile_map_1(&mut self, address: u16, byte: u8) {
+        self.tile_map_1[address as usize] = byte
+    }
+
+    pub fn get_tile_row(&self, address: u16) -> u8 {
+        let tile = self.tile_data[(address / 16) as usize];
+        tile.bytes[(address % 16) as usize]
+    }
+
+    pub fn set_tile_row(&mut self, address: u16, byte: u8) {
+        let mut tile = &mut self.tile_data[(address / 16) as usize];
+        tile.bytes[(address % 16) as usize] = byte;
+    }
+
     pub fn emulate(&mut self) {
         if !self.control.lcd_on {
             return;
@@ -275,6 +345,7 @@ impl GPU {
                 if self.current_line < H_SCANLINE_MAX {
                     self.switch_mode(Mode::OAM);
                 } else {
+                    self.display.vsync();
                     self.switch_mode(Mode::VBlank);
                 }
             }
@@ -297,12 +368,71 @@ impl GPU {
         self.current_mode = mode;
     }
 
-    fn draw_scanline(&mut self) {}
+    fn draw_scanline(&mut self) {
+        if self.control.bg_on {
+            self.draw_tiles();
+        }
+
+        if self.control.obj_on {
+            self.draw_sprites();
+        }
+    }
+
+    // TODO: handle window drawing
+    fn draw_tiles(&mut self) {
+        let y_pos = self.current_line.wrapping_add(self.scroll_y);
+        let tile_row = y_pos / 8;
+
+        for col in 0..V_SCANLINE_MAX {
+            let x_pos = col.wrapping_add(self.scroll_x);
+            let tile_col = x_pos / 8;
+            let tile = self.get_tile(tile_row, tile_col);
+
+            let color = tile.get_color(y_pos % 8, x_pos % 8);
+            let color = self.bg_palette.map(color);
+            self.display.set_pixel(col, self.current_line, color);
+        }
+    }
+
+    fn draw_sprites(&mut self) {}
+
+    /// Given a tile row and col, returns the tile via the proper semantics
+    /// by doing a lookup for the number and then the data using LCDC register
+    fn get_tile(&self, row: u8, col: u8) -> &Tile {
+        // TODO: add option for choosing window tiles
+        let tile_map = if self.control.bg_map {
+            &self.tile_map_1
+        } else {
+            &self.tile_map_0
+        };
+
+        // First, look up the tile number in the mapping
+        let offset = (row as usize) * 32 + (col as usize);
+        let tile_num = tile_map[offset];
+
+        // Next, use the tile number to find the corresponding data
+        if self.control.bg_data {
+            &self.tile_data[tile_num as usize]
+        } else {
+            let tile_num = tile_num as i8 as u16; // Extend the sign
+            let addr = tile_num.wrapping_add(0x80) as usize;
+
+            // (0x8800 - 0x8000) / 0x10 = 0x80
+            &self.tile_data[0x80 + addr]
+        }
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+
+    impl GPU {
+        fn test() -> GPU {
+            let display = NoDisplay::new();
+            GPU::new(Box::new(display))
+        }
+    }
 
     #[test]
     fn palette_from_u8() {
@@ -353,8 +483,25 @@ mod test {
     }
 
     #[test]
+    fn tile_get_color() {
+        let mut tile = Tile::new();
+
+        tile.bytes[3] = 0b10101110;
+        tile.bytes[2] = 0b00110101;
+
+        assert_eq!(tile.get_color(1, 0), Color::Dark);
+        assert_eq!(tile.get_color(1, 1), Color::White);
+        assert_eq!(tile.get_color(1, 2), Color::Black);
+        assert_eq!(tile.get_color(1, 3), Color::Light);
+        assert_eq!(tile.get_color(1, 4), Color::Dark);
+        assert_eq!(tile.get_color(1, 5), Color::Black);
+        assert_eq!(tile.get_color(1, 6), Color::Dark);
+        assert_eq!(tile.get_color(1, 7), Color::Light);
+    }
+
+    #[test]
     fn gpu_bg_palette() {
-        let mut gpu = GPU::new();
+        let mut gpu = GPU::test();
         let palette = Palette::from(0xFF);
 
         gpu.set_bg_palette(0xFF);
@@ -364,8 +511,25 @@ mod test {
     }
 
     #[test]
+    fn gpu_tile_data() {
+        let mut gpu = GPU::test();
+
+        assert_eq!(gpu.get_tile_row(0x0), 0x0);
+        assert_eq!(gpu.get_tile_row(0x1), 0x0);
+
+        gpu.set_tile_row(0x0, 0xFF);
+        gpu.set_tile_row(0x1, 0xAA);
+
+        assert_eq!(gpu.get_tile_row(0x0), 0xFF);
+        assert_eq!(gpu.get_tile_row(0x1), 0xAA);
+
+        assert_eq!(gpu.tile_data[0x0].bytes[0x0], 0xFF);
+        assert_eq!(gpu.tile_data[0x0].bytes[0x1], 0xAA);
+    }
+
+    #[test]
     fn gpu_control() {
-        let mut gpu = GPU::new();
+        let mut gpu = GPU::test();
         let control = Control::from(0xFF);
 
         gpu.set_control(0xFF);
@@ -376,7 +540,7 @@ mod test {
 
     #[test]
     fn gpu_scroll() {
-        let mut gpu = GPU::new();
+        let mut gpu = GPU::test();
 
         gpu.set_scroll_x(0x6);
         assert_eq!(gpu.get_scroll_x(), 0x6);
@@ -387,7 +551,7 @@ mod test {
 
     #[test]
     fn gpu_current_line() {
-        let mut gpu = GPU::new();
+        let mut gpu = GPU::test();
 
         gpu.current_line = 0x4;
         assert_eq!(gpu.get_current_line(), 0x4);
