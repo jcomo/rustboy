@@ -37,7 +37,7 @@ pub struct GameBoy {
 }
 
 impl GameBoy {
-    pub fn load(cartridge: &Vec<u8>, display: Box<dyn VideoDisplay>) -> GameBoy {
+    pub fn new(cartridge: &Vec<u8>, display: Box<dyn VideoDisplay>) -> GameBoy {
         // TODO: check for catridge too large?
         let rom = cartridge.to_owned();
 
@@ -47,10 +47,7 @@ impl GameBoy {
         }
     }
 
-    pub fn run(&mut self) {
-        println!("[start] boot rom");
-        loop {
-            self.cpu.step(&mut self.mmu);
-        }
+    pub fn step(&mut self) {
+        self.cpu.step(&mut self.mmu);
     }
 }
