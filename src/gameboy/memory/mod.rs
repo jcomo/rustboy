@@ -6,6 +6,7 @@ use crate::gameboy::gpu::GPU;
 use crate::gameboy::VideoDisplay;
 
 pub struct MMU {
+    is_checking_boot_rom: bool,
     boot_rom: [u8; 0x100],
     ram: [u8; 0x10_000],
     gpu: GPU,
@@ -19,6 +20,7 @@ impl MMU {
         }
 
         MMU {
+            is_checking_boot_rom: true,
             boot_rom: DMG_BIN,
             ram: ram,
             gpu: GPU::new(display),
@@ -32,7 +34,13 @@ impl MMU {
     fn get_byte_internal(&self, address: u16) -> u8 {
         let index = address as usize;
         match address >> 8 {
-            0x00 => self.boot_rom[index],
+            0x00 => {
+                if self.is_checking_boot_rom {
+                    self.boot_rom[index]
+                } else {
+                    self.ram[index]
+                }
+            }
             0x80...0x97 => self.gpu.get_tile_row(address - 0x8000),
             0x98...0x9B => self.gpu.get_tile_map_0(address - 0x9800),
             0x9C...0x9F => self.gpu.get_tile_map_1(address - 0x9C00),
@@ -82,7 +90,7 @@ impl MMU {
                 0x47 => self.gpu.set_bg_palette(byte),
                 0x48 => self.gpu.set_object_palette_0(byte),
                 0x49 => self.gpu.set_object_palette_1(byte),
-                0x50 => panic!("Boot ROM check complete!!!"),
+                0x50 => self.is_checking_boot_rom = false,
                 0x4A => self.gpu.set_window_y(byte),
                 0x4B => self.gpu.set_window_x(byte),
                 0x80...0xFE => self.ram[index] = byte,
