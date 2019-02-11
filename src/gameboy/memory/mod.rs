@@ -31,7 +31,7 @@ impl MMU {
     }
 
     fn emulate(&mut self) {
-        self.gpu.emulate();
+        self.gpu.emulate(&mut self.irq);
     }
 
     fn get_byte_internal(&self, address: u16) -> u8 {
@@ -50,6 +50,7 @@ impl MMU {
             0xFF => match address & 0xFF {
                 0x0F => self.irq.get_interrupt_bits(),
                 0x40 => self.gpu.get_control(),
+                0x41 => self.gpu.get_stat(),
                 0x42 => self.gpu.get_scroll_y(),
                 0x43 => self.gpu.get_scroll_x(),
                 0x44 => self.gpu.get_current_line(),
@@ -88,6 +89,7 @@ impl MMU {
                 0x25 => println!("SOUND NOT IMPLEMENTED"),
                 0x26 => println!("SOUND NOT IMPLEMENTED"),
                 0x40 => self.gpu.set_control(byte),
+                0x41 => self.gpu.set_stat(byte),
                 0x42 => self.gpu.set_scroll_y(byte),
                 0x43 => self.gpu.set_scroll_x(byte),
                 0x44 => self.gpu.reset_current_line(),

@@ -2,7 +2,7 @@ use crate::bits;
 
 pub enum Interrupt {
     VBlank,
-    LCD,
+    LCDC,
     Timer,
     Serial,
     Joypad,
@@ -14,7 +14,7 @@ impl Interrupt {
 
         match bit & 0b00011111 {
             0b00001 => Some(VBlank),
-            0b00010 => Some(LCD),
+            0b00010 => Some(LCDC),
             0b00100 => Some(Timer),
             0b01000 => Some(Serial),
             0b10000 => Some(Joypad),
@@ -25,9 +25,9 @@ impl Interrupt {
     fn bit_position(&self) -> u8 {
         use self::Interrupt::*;
 
-        match *self {
+        match self {
             VBlank => 0,
-            LCD => 1,
+            LCDC => 1,
             Timer => 2,
             Serial => 3,
             Joypad => 4,
@@ -37,9 +37,9 @@ impl Interrupt {
     fn get_addr(&self) -> u16 {
         use self::Interrupt::*;
 
-        match *self {
+        match self {
             VBlank => 0x40,
-            LCD => 0x48,
+            LCDC => 0x48,
             Timer => 0x50,
             Serial => 0x58,
             Joypad => 0x60,
@@ -151,7 +151,7 @@ mod test {
         irq.set_interrupt(&Interrupt::VBlank);
         assert_eq!(irq.interrupt_bits, 0b00000001);
 
-        irq.set_interrupt(&Interrupt::LCD);
+        irq.set_interrupt(&Interrupt::LCDC);
         assert_eq!(irq.interrupt_bits, 0b00000011);
 
         irq.set_interrupt(&Interrupt::Timer);
@@ -172,7 +172,7 @@ mod test {
         irq.reset_interrupt(&Interrupt::VBlank);
         assert_eq!(irq.interrupt_bits, 0b00011110);
 
-        irq.reset_interrupt(&Interrupt::LCD);
+        irq.reset_interrupt(&Interrupt::LCDC);
         assert_eq!(irq.interrupt_bits, 0b00011100);
 
         irq.reset_interrupt(&Interrupt::Timer);
