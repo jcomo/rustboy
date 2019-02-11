@@ -132,14 +132,14 @@ impl From<u8> for Control {
 
 impl From<&Control> for u8 {
     fn from(control: &Control) -> u8 {
-        bits::set(7, control.lcd_on)
-            | bits::set(6, control.window_map)
-            | bits::set(5, control.window_on)
-            | bits::set(4, control.bg_data)
-            | bits::set(3, control.bg_map)
-            | bits::set(2, control.obj_size)
-            | bits::set(1, control.obj_on)
-            | bits::set(0, control.bg_on)
+        bits::from_bool(control.lcd_on) << 7
+            | bits::from_bool(control.window_map) << 6
+            | bits::from_bool(control.window_on) << 5
+            | bits::from_bool(control.bg_data) << 4
+            | bits::from_bool(control.bg_map) << 3
+            | bits::from_bool(control.obj_size) << 2
+            | bits::from_bool(control.obj_on) << 1
+            | bits::from_bool(control.bg_on)
     }
 }
 

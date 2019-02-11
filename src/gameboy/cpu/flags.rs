@@ -10,10 +10,10 @@ pub struct Flags {
 
 impl From<&Flags> for u8 {
     fn from(flags: &Flags) -> u8 {
-        bits::set(7, flags.zero)
-            | bits::set(6, flags.subtract)
-            | bits::set(5, flags.half_carry)
-            | bits::set(4, flags.carry)
+        bits::from_bool(flags.zero) << 7
+            | bits::from_bool(flags.subtract) << 6
+            | bits::from_bool(flags.half_carry) << 5
+            | bits::from_bool(flags.carry) << 4
     }
 }
 
