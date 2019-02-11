@@ -201,6 +201,7 @@ impl From<&Stat> for u8 {
     }
 }
 
+#[derive(Debug, PartialEq)]
 enum Mode {
     OAM,
     PixelTransfer,
@@ -557,6 +558,14 @@ mod test {
         }
     }
 
+    impl IRQ {
+        fn enabled() -> IRQ {
+            let mut irq = IRQ::new();
+            irq.set_enabled_bits(0xFF);
+            irq
+        }
+    }
+
     #[test]
     fn palette_from_u8() {
         let palette = Palette::from(0b11_10_01_00);
@@ -663,7 +672,16 @@ mod test {
 
     #[test]
     fn gpu_stat() {
-        assert_eq!(true, false);
+        let mut gpu = GPU::test();
+        let stat = Stat::from(0xFF);
+
+        gpu.set_stat(0xFF);
+
+        gpu.control.lcd_on = false;
+        assert_eq!(gpu.get_stat(), 0x80);
+
+        gpu.control.lcd_on = true;
+        assert_eq!(gpu.get_stat(), 0xFF);
     }
 
     #[test]
@@ -690,6 +708,106 @@ mod test {
 
     #[test]
     fn gpu_compare_line() {
-        assert_eq!(true, false);
+        let mut gpu = GPU::test();
+
+        gpu.set_compare_line(0x4);
+        assert_eq!(gpu.get_compare_line(), 0x4);
+    }
+
+    #[test]
+    fn gpu_switch_mode_oam() {
+        let mut gpu = GPU::test();
+        let mut irq = IRQ::enabled();
+
+        gpu.switch_mode(Mode::OAM, &mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::OAM);
+        assert_eq!(gpu.remaining_cycles, Mode::OAM.cycles());
+        assert_eq!(gpu.stat.mode_flag, MODE_FLAG_ACCESS_OAM);
+        assert_eq!(irq.ack_interrupt(), None);
+
+        gpu.stat.access_oam_interrupt = true;
+
+        gpu.switch_mode(Mode::OAM, &mut irq);
+
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::LCDC.get_addr()));
+    }
+
+    #[test]
+    fn gpu_switch_mode_pixel_transfer() {
+        let mut gpu = GPU::test();
+        let mut irq = IRQ::enabled();
+
+        gpu.switch_mode(Mode::PixelTransfer, &mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::PixelTransfer);
+        assert_eq!(gpu.remaining_cycles, Mode::PixelTransfer.cycles());
+        assert_eq!(gpu.stat.mode_flag, MODE_FLAG_PIXEL_TRANSFER);
+        assert_eq!(irq.ack_interrupt(), None);
+    }
+
+    #[test]
+    fn gpu_switch_mode_hblank() {
+        let mut gpu = GPU::test();
+        let mut irq = IRQ::enabled();
+
+        gpu.switch_mode(Mode::HBlank, &mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::HBlank);
+        assert_eq!(gpu.remaining_cycles, Mode::HBlank.cycles());
+        assert_eq!(gpu.stat.mode_flag, MODE_FLAG_HBLANK);
+        assert_eq!(irq.ack_interrupt(), None);
+
+        gpu.stat.hblank_interrupt = true;
+
+        gpu.switch_mode(Mode::HBlank, &mut irq);
+
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::LCDC.get_addr()));
+    }
+
+    #[test]
+    fn gpu_switch_mode_vblank() {
+        let mut gpu = GPU::test();
+        let mut irq = IRQ::enabled();
+
+        gpu.switch_mode(Mode::VBlank, &mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::VBlank);
+        assert_eq!(gpu.remaining_cycles, Mode::VBlank.cycles());
+        assert_eq!(gpu.stat.mode_flag, MODE_FLAG_VBLANK);
+
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::VBlank.get_addr()));
+        assert_eq!(irq.ack_interrupt(), None);
+
+        gpu.stat.vblank_interrupt = true;
+
+        gpu.switch_mode(Mode::VBlank, &mut irq);
+
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::VBlank.get_addr()));
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::LCDC.get_addr()));
+    }
+
+    #[test]
+    fn gpu_check_compare_line() {
+        let mut gpu = GPU::test();
+        let mut irq = IRQ::enabled();
+
+        gpu.current_line = 1;
+        gpu.compare_line = 1;
+
+        gpu.stat.line_compare_interrupt = true;
+        gpu.check_compare_line(&mut irq);
+        assert_eq!(gpu.stat.line_compare, true);
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::LCDC.get_addr()));
+
+        gpu.stat.line_compare_interrupt = false;
+        gpu.check_compare_line(&mut irq);
+        assert_eq!(gpu.stat.line_compare, true);
+        assert_eq!(irq.ack_interrupt(), None);
+
+        gpu.current_line = 2;
+        gpu.check_compare_line(&mut irq);
+        assert_eq!(gpu.stat.line_compare, false);
+        assert_eq!(irq.ack_interrupt(), None);
     }
 }

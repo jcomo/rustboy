@@ -34,7 +34,7 @@ impl Interrupt {
         }
     }
 
-    fn get_addr(&self) -> u16 {
+    pub fn get_addr(&self) -> u16 {
         use self::Interrupt::*;
 
         match self {
