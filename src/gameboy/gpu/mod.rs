@@ -715,98 +715,130 @@ mod test {
     }
 
     #[test]
-    fn gpu_switch_mode_oam() {
+    fn gpu_emulate_state_transitions() {
         let mut gpu = GPU::test();
         let mut irq = IRQ::enabled();
+        gpu.control.lcd_on = true;
 
-        gpu.switch_mode(Mode::OAM, &mut irq);
-
-        assert_eq!(gpu.current_mode, Mode::OAM);
-        assert_eq!(gpu.remaining_cycles, Mode::OAM.cycles());
-        assert_eq!(gpu.stat.mode_flag, MODE_FLAG_ACCESS_OAM);
-        assert_eq!(irq.ack_interrupt(), None);
-
-        gpu.stat.access_oam_interrupt = true;
-
-        gpu.switch_mode(Mode::OAM, &mut irq);
-
-        assert_eq!(irq.ack_interrupt(), Some(Interrupt::LCDC.get_addr()));
-    }
-
-    #[test]
-    fn gpu_switch_mode_pixel_transfer() {
-        let mut gpu = GPU::test();
-        let mut irq = IRQ::enabled();
-
-        gpu.switch_mode(Mode::PixelTransfer, &mut irq);
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
 
         assert_eq!(gpu.current_mode, Mode::PixelTransfer);
         assert_eq!(gpu.remaining_cycles, Mode::PixelTransfer.cycles());
         assert_eq!(gpu.stat.mode_flag, MODE_FLAG_PIXEL_TRANSFER);
         assert_eq!(irq.ack_interrupt(), None);
-    }
 
-    #[test]
-    fn gpu_switch_mode_hblank() {
-        let mut gpu = GPU::test();
-        let mut irq = IRQ::enabled();
-
-        gpu.switch_mode(Mode::HBlank, &mut irq);
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
 
         assert_eq!(gpu.current_mode, Mode::HBlank);
         assert_eq!(gpu.remaining_cycles, Mode::HBlank.cycles());
         assert_eq!(gpu.stat.mode_flag, MODE_FLAG_HBLANK);
         assert_eq!(irq.ack_interrupt(), None);
 
-        gpu.stat.hblank_interrupt = true;
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
 
-        gpu.switch_mode(Mode::HBlank, &mut irq);
+        assert_eq!(gpu.current_mode, Mode::OAM);
+        assert_eq!(gpu.remaining_cycles, Mode::OAM.cycles());
+        assert_eq!(gpu.stat.mode_flag, MODE_FLAG_ACCESS_OAM);
+        assert_eq!(irq.ack_interrupt(), None);
 
-        assert_eq!(irq.ack_interrupt(), Some(Interrupt::LCDC.get_addr()));
+        assert_eq!(gpu.current_line, 1);
     }
 
     #[test]
-    fn gpu_switch_mode_vblank() {
+    fn gpu_emulate_interrupts() {
         let mut gpu = GPU::test();
         let mut irq = IRQ::enabled();
 
-        gpu.switch_mode(Mode::VBlank, &mut irq);
-
-        assert_eq!(gpu.current_mode, Mode::VBlank);
-        assert_eq!(gpu.remaining_cycles, Mode::VBlank.cycles());
-        assert_eq!(gpu.stat.mode_flag, MODE_FLAG_VBLANK);
-
-        assert_eq!(irq.ack_interrupt(), Some(Interrupt::VBlank.get_addr()));
-        assert_eq!(irq.ack_interrupt(), None);
-
+        gpu.control.lcd_on = true;
+        gpu.stat.access_oam_interrupt = true;
+        gpu.stat.hblank_interrupt = true;
         gpu.stat.vblank_interrupt = true;
 
-        gpu.switch_mode(Mode::VBlank, &mut irq);
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
 
+        assert_eq!(gpu.current_mode, Mode::PixelTransfer);
+        assert_eq!(irq.ack_interrupt(), None);
+
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::HBlank);
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::LCDC.get_addr()));
+
+        gpu.current_line = H_SCANLINE_MAX - 1;
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::VBlank);
         assert_eq!(irq.ack_interrupt(), Some(Interrupt::VBlank.get_addr()));
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::LCDC.get_addr()));
+
+        gpu.current_line = V_SCANLINE_MAX - 1;
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::OAM);
         assert_eq!(irq.ack_interrupt(), Some(Interrupt::LCDC.get_addr()));
     }
 
     #[test]
-    fn gpu_check_compare_line() {
+    fn gpu_emulate_vblank() {
         let mut gpu = GPU::test();
         let mut irq = IRQ::enabled();
 
-        gpu.current_line = 1;
-        gpu.compare_line = 1;
+        gpu.control.lcd_on = true;
+        gpu.switch_mode(Mode::HBlank, &mut irq);
 
+        gpu.current_line = H_SCANLINE_MAX - 1;
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::VBlank);
+        assert_eq!(gpu.current_line, H_SCANLINE_MAX);
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::VBlank.get_addr()));
+
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::VBlank);
+        assert_eq!(gpu.current_line, H_SCANLINE_MAX + 1);
+        assert_eq!(irq.ack_interrupt(), None);
+
+        gpu.current_line = V_SCANLINE_MAX - 1;
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::OAM);
+        assert_eq!(gpu.current_line, 0);
+        assert_eq!(irq.ack_interrupt(), None);
+    }
+
+    #[test]
+    fn gpu_emulate_compare_line() {
+        let mut gpu = GPU::test();
+        let mut irq = IRQ::enabled();
+
+        gpu.control.lcd_on = true;
+        gpu.compare_line = 1;
         gpu.stat.line_compare_interrupt = true;
-        gpu.check_compare_line(&mut irq);
+
+        gpu.switch_mode(Mode::HBlank, &mut irq);
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_line, 1);
         assert_eq!(gpu.stat.line_compare, true);
         assert_eq!(irq.ack_interrupt(), Some(Interrupt::LCDC.get_addr()));
 
-        gpu.stat.line_compare_interrupt = false;
-        gpu.check_compare_line(&mut irq);
-        assert_eq!(gpu.stat.line_compare, true);
-        assert_eq!(irq.ack_interrupt(), None);
+        gpu.switch_mode(Mode::HBlank, &mut irq);
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
 
-        gpu.current_line = 2;
-        gpu.check_compare_line(&mut irq);
+        assert_eq!(gpu.current_line, 2);
         assert_eq!(gpu.stat.line_compare, false);
         assert_eq!(irq.ack_interrupt(), None);
     }
