@@ -26,6 +26,9 @@ pub trait MemoryBus {
 #[derive(Default)]
 pub struct CPU {
     registers: Registers,
+
+    // Implement the master interrupt flags here instead of on the interrupt line
+    // hardware implementation since they were a part of the CPU on the Gameboy.
     ime: bool,
     ime_queued: bool,
 }
