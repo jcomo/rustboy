@@ -1,12 +1,22 @@
 use crate::bits;
+use crate::gameboy::irq::Interrupt;
+use crate::gameboy::irq::IRQ;
 use crate::gameboy::Color;
 use crate::gameboy::NoDisplay;
 use crate::gameboy::VideoDisplay;
 
+// LCDC CPU cycle lengths
 const OAM_CYCLES: i32 = 21;
 const PIXEL_TRANSFER_CYCLES: i32 = 43;
 const HBLANK_CYCLES: i32 = 50;
 const VBLANK_CYCLES: i32 = 114;
+
+// LCDC Stat mode flags
+const MODE_FLAG_HBLANK: u8 = 0b00;
+const MODE_FLAG_VBLANK: u8 = 0b01;
+const MODE_FLAG_ACCESS_OAM: u8 = 0b10;
+const MODE_FLAG_PIXEL_TRANSFER: u8 = 0b11;
+const STAT_UNUSED: u8 = 0b1000_0000;
 
 const V_SCANLINE_MAX: u8 = 160;
 const H_SCANLINE_MAX: u8 = 144;
@@ -143,6 +153,55 @@ impl From<&Control> for u8 {
     }
 }
 
+#[derive(Debug, PartialEq)]
+struct Stat {
+    line_compare_interrupt: bool,
+    hblank_interrupt: bool,
+    vblank_interrupt: bool,
+    access_oam_interrupt: bool,
+    line_compare: bool,
+    mode_flag: u8,
+}
+
+impl Stat {
+    fn new() -> Stat {
+        Stat {
+            line_compare_interrupt: false,
+            hblank_interrupt: false,
+            vblank_interrupt: false,
+            access_oam_interrupt: false,
+            line_compare: false,
+            mode_flag: MODE_FLAG_ACCESS_OAM,
+        }
+    }
+}
+
+impl From<u8> for Stat {
+    fn from(byte: u8) -> Stat {
+        Stat {
+            line_compare_interrupt: bits::is_set(byte, 6),
+            hblank_interrupt: bits::is_set(byte, 5),
+            vblank_interrupt: bits::is_set(byte, 4),
+            access_oam_interrupt: bits::is_set(byte, 3),
+            line_compare: bits::is_set(byte, 2),
+            mode_flag: byte & 0b11,
+        }
+    }
+}
+
+impl From<&Stat> for u8 {
+    fn from(stat: &Stat) -> u8 {
+        STAT_UNUSED
+            | bits::from_bool(stat.line_compare_interrupt) << 6
+            | bits::from_bool(stat.hblank_interrupt) << 5
+            | bits::from_bool(stat.vblank_interrupt) << 4
+            | bits::from_bool(stat.access_oam_interrupt) << 3
+            | bits::from_bool(stat.line_compare) << 2
+            | (stat.mode_flag & 0b11)
+    }
+}
+
+#[derive(Debug, PartialEq)]
 enum Mode {
     OAM,
     PixelTransfer,
@@ -151,12 +210,25 @@ enum Mode {
 }
 
 impl Mode {
-    fn cycles(&self) -> i32 {
+    fn flag_bits(&self) -> u8 {
+        use self::Mode::*;
+
         match self {
-            Mode::OAM => OAM_CYCLES,
-            Mode::PixelTransfer => PIXEL_TRANSFER_CYCLES,
-            Mode::HBlank => HBLANK_CYCLES,
-            Mode::VBlank => VBLANK_CYCLES,
+            OAM => MODE_FLAG_ACCESS_OAM,
+            PixelTransfer => MODE_FLAG_PIXEL_TRANSFER,
+            HBlank => MODE_FLAG_HBLANK,
+            VBlank => MODE_FLAG_VBLANK,
+        }
+    }
+
+    fn cycles(&self) -> i32 {
+        use self::Mode::*;
+
+        match self {
+            OAM => OAM_CYCLES,
+            PixelTransfer => PIXEL_TRANSFER_CYCLES,
+            HBlank => HBLANK_CYCLES,
+            VBlank => VBLANK_CYCLES,
         }
     }
 }
@@ -189,11 +261,13 @@ impl Tile {
 
 pub struct GPU {
     current_line: u8,
+    compare_line: u8,
     current_mode: Mode,
     remaining_cycles: i32,
     scroll_x: u8,
     scroll_y: u8,
     control: Control,
+    stat: Stat,
     bg_palette: Palette,
     tile_map_0: [u8; TILE_MAP_SIZE],
     tile_map_1: [u8; TILE_MAP_SIZE],
@@ -205,11 +279,13 @@ impl GPU {
     pub fn new(display: Box<dyn VideoDisplay>) -> GPU {
         GPU {
             current_line: 0,
+            compare_line: 0,
             current_mode: Mode::OAM,
             remaining_cycles: Mode::OAM.cycles(),
             scroll_x: 0,
             scroll_y: 0,
             control: Control::new(),
+            stat: Stat::new(),
             bg_palette: Palette::new(),
             tile_map_0: [0; TILE_MAP_SIZE],
             tile_map_1: [0; TILE_MAP_SIZE],
@@ -226,6 +302,18 @@ impl GPU {
         self.control = Control::from(value)
     }
 
+    pub fn get_stat(&self) -> u8 {
+        if self.control.lcd_on {
+            u8::from(&self.stat)
+        } else {
+            STAT_UNUSED
+        }
+    }
+
+    pub fn set_stat(&mut self, value: u8) {
+        self.stat = Stat::from(value)
+    }
+
     pub fn get_current_line(&self) -> u8 {
         self.current_line
     }
@@ -235,11 +323,11 @@ impl GPU {
     }
 
     pub fn get_compare_line(&self) -> u8 {
-        panic!("get_compare_line()")
+        self.compare_line
     }
 
     pub fn set_compare_line(&mut self, value: u8) {
-        panic!("set_compare_line(0x{:X})", value)
+        self.compare_line = value
     }
 
     pub fn get_scroll_x(&self) -> u8 {
@@ -324,7 +412,7 @@ impl GPU {
         tile.bytes[(address % 16) as usize] = byte;
     }
 
-    pub fn emulate(&mut self) {
+    pub fn emulate(&mut self, irq: &mut IRQ) {
         if !self.control.lcd_on {
             return;
         }
@@ -335,37 +423,69 @@ impl GPU {
         }
 
         match self.current_mode {
-            Mode::OAM => self.switch_mode(Mode::PixelTransfer),
+            Mode::OAM => self.switch_mode(Mode::PixelTransfer, irq),
             Mode::PixelTransfer => {
                 self.draw_scanline();
-                self.switch_mode(Mode::HBlank);
+                self.switch_mode(Mode::HBlank, irq);
             }
             Mode::HBlank => {
                 self.current_line += 1;
+                self.check_compare_line(irq);
+
                 if self.current_line < H_SCANLINE_MAX {
-                    self.switch_mode(Mode::OAM);
+                    self.switch_mode(Mode::OAM, irq);
                 } else {
                     self.display.vsync();
-                    self.switch_mode(Mode::VBlank);
+                    self.switch_mode(Mode::VBlank, irq);
                 }
             }
             Mode::VBlank => {
                 self.current_line += 1;
+                self.check_compare_line(irq);
+
                 if self.current_line < H_SCANLINE_VBLANK_MAX {
                     // Reset cycles to be able to continue incrementing scanline
                     // but do not actually switch mode (no interrupts)
                     self.remaining_cycles = Mode::VBlank.cycles();
                 } else {
                     self.current_line = 0;
-                    self.switch_mode(Mode::OAM);
+                    self.switch_mode(Mode::OAM, irq);
                 }
             }
         }
     }
 
-    fn switch_mode(&mut self, mode: Mode) {
+    fn switch_mode(&mut self, mode: Mode, irq: &mut IRQ) {
+        self.stat.mode_flag = mode.flag_bits();
         self.remaining_cycles = mode.cycles();
         self.current_mode = mode;
+
+        match self.current_mode {
+            Mode::OAM => {
+                if self.stat.access_oam_interrupt {
+                    irq.set_interrupt(&Interrupt::LCDC);
+                }
+            }
+            Mode::HBlank => {
+                if self.stat.hblank_interrupt {
+                    irq.set_interrupt(&Interrupt::LCDC);
+                }
+            }
+            Mode::VBlank => {
+                irq.set_interrupt(&Interrupt::VBlank);
+                if self.stat.vblank_interrupt {
+                    irq.set_interrupt(&Interrupt::LCDC);
+                }
+            }
+            _ => {}
+        };
+    }
+
+    fn check_compare_line(&mut self, irq: &mut IRQ) {
+        self.stat.line_compare = self.current_line == self.compare_line;
+        if self.stat.line_compare && self.stat.line_compare_interrupt {
+            irq.set_interrupt(&Interrupt::LCDC);
+        }
     }
 
     fn draw_scanline(&mut self) {
@@ -431,6 +551,14 @@ mod test {
         fn test() -> GPU {
             let display = NoDisplay::new();
             GPU::new(Box::new(display))
+        }
+    }
+
+    impl IRQ {
+        fn enabled() -> IRQ {
+            let mut irq = IRQ::new();
+            irq.set_enabled_bits(0xFF);
+            irq
         }
     }
 
@@ -539,6 +667,20 @@ mod test {
     }
 
     #[test]
+    fn gpu_stat() {
+        let mut gpu = GPU::test();
+        let stat = Stat::from(0xFF);
+
+        gpu.set_stat(0xFF);
+
+        gpu.control.lcd_on = false;
+        assert_eq!(gpu.get_stat(), 0x80);
+
+        gpu.control.lcd_on = true;
+        assert_eq!(gpu.get_stat(), 0xFF);
+    }
+
+    #[test]
     fn gpu_scroll() {
         let mut gpu = GPU::test();
 
@@ -558,5 +700,142 @@ mod test {
 
         gpu.reset_current_line();
         assert_eq!(gpu.get_current_line(), 0x0);
+    }
+
+    #[test]
+    fn gpu_compare_line() {
+        let mut gpu = GPU::test();
+
+        gpu.set_compare_line(0x4);
+        assert_eq!(gpu.get_compare_line(), 0x4);
+    }
+
+    #[test]
+    fn gpu_emulate_state_transitions() {
+        let mut gpu = GPU::test();
+        let mut irq = IRQ::enabled();
+        gpu.control.lcd_on = true;
+
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::PixelTransfer);
+        assert_eq!(gpu.remaining_cycles, Mode::PixelTransfer.cycles());
+        assert_eq!(gpu.stat.mode_flag, MODE_FLAG_PIXEL_TRANSFER);
+        assert_eq!(irq.ack_interrupt(), None);
+
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::HBlank);
+        assert_eq!(gpu.remaining_cycles, Mode::HBlank.cycles());
+        assert_eq!(gpu.stat.mode_flag, MODE_FLAG_HBLANK);
+        assert_eq!(irq.ack_interrupt(), None);
+
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::OAM);
+        assert_eq!(gpu.remaining_cycles, Mode::OAM.cycles());
+        assert_eq!(gpu.stat.mode_flag, MODE_FLAG_ACCESS_OAM);
+        assert_eq!(irq.ack_interrupt(), None);
+
+        assert_eq!(gpu.current_line, 1);
+    }
+
+    #[test]
+    fn gpu_emulate_interrupts() {
+        let mut gpu = GPU::test();
+        let mut irq = IRQ::enabled();
+
+        gpu.control.lcd_on = true;
+        gpu.stat.access_oam_interrupt = true;
+        gpu.stat.hblank_interrupt = true;
+        gpu.stat.vblank_interrupt = true;
+
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::PixelTransfer);
+        assert_eq!(irq.ack_interrupt(), None);
+
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::HBlank);
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::LCDC.get_addr()));
+
+        gpu.current_line = H_SCANLINE_MAX - 1;
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::VBlank);
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::VBlank.get_addr()));
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::LCDC.get_addr()));
+
+        gpu.current_line = V_SCANLINE_MAX - 1;
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::OAM);
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::LCDC.get_addr()));
+    }
+
+    #[test]
+    fn gpu_emulate_vblank() {
+        let mut gpu = GPU::test();
+        let mut irq = IRQ::enabled();
+
+        gpu.control.lcd_on = true;
+        gpu.switch_mode(Mode::HBlank, &mut irq);
+
+        gpu.current_line = H_SCANLINE_MAX - 1;
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::VBlank);
+        assert_eq!(gpu.current_line, H_SCANLINE_MAX);
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::VBlank.get_addr()));
+
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::VBlank);
+        assert_eq!(gpu.current_line, H_SCANLINE_MAX + 1);
+        assert_eq!(irq.ack_interrupt(), None);
+
+        gpu.current_line = V_SCANLINE_MAX - 1;
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_mode, Mode::OAM);
+        assert_eq!(gpu.current_line, 0);
+        assert_eq!(irq.ack_interrupt(), None);
+    }
+
+    #[test]
+    fn gpu_emulate_compare_line() {
+        let mut gpu = GPU::test();
+        let mut irq = IRQ::enabled();
+
+        gpu.control.lcd_on = true;
+        gpu.compare_line = 1;
+        gpu.stat.line_compare_interrupt = true;
+
+        gpu.switch_mode(Mode::HBlank, &mut irq);
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_line, 1);
+        assert_eq!(gpu.stat.line_compare, true);
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::LCDC.get_addr()));
+
+        gpu.switch_mode(Mode::HBlank, &mut irq);
+        gpu.remaining_cycles = 1;
+        gpu.emulate(&mut irq);
+
+        assert_eq!(gpu.current_line, 2);
+        assert_eq!(gpu.stat.line_compare, false);
+        assert_eq!(irq.ack_interrupt(), None);
     }
 }
