@@ -482,13 +482,9 @@ impl GPU {
     }
 
     fn check_compare_line(&mut self, irq: &mut IRQ) {
-        if self.current_line == self.compare_line {
-            self.stat.line_compare = true;
-            if self.stat.line_compare_interrupt {
-                irq.set_interrupt(&Interrupt::LCDC);
-            }
-        } else {
-            self.stat.line_compare = false;
+        self.stat.line_compare = self.current_line == self.compare_line;
+        if self.stat.line_compare && self.stat.line_compare_interrupt {
+            irq.set_interrupt(&Interrupt::LCDC);
         }
     }
 
