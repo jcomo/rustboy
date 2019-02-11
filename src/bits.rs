@@ -27,9 +27,15 @@ pub fn to_bool(value: u8) -> bool {
     value & 0x1 != 0
 }
 
-/// Returns u8 with value of bit set
-pub fn set(bit: u8, value: bool) -> u8 {
-    from_bool(value) << bit
+/// Sets the bit at the given position
+pub fn set(byte: u8, position: u8) -> u8 {
+    byte | (1 << position)
+}
+
+/// Resets the bit at the given position
+pub fn reset(byte: u8, position: u8) -> u8 {
+    let mask = (1 << position) ^ 0xFF;
+    byte & mask
 }
 
 /// Returns true if the index of the bit is set

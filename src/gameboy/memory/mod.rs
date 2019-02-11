@@ -3,6 +3,7 @@ mod boot;
 use self::boot::DMG_BIN;
 use crate::gameboy::cpu::MemoryBus;
 use crate::gameboy::gpu::GPU;
+use crate::gameboy::irq::IRQ;
 use crate::gameboy::VideoDisplay;
 
 pub struct MMU {
@@ -10,6 +11,7 @@ pub struct MMU {
     boot_rom: [u8; 0x100],
     ram: [u8; 0x10_000],
     gpu: GPU,
+    irq: IRQ,
 }
 
 impl MMU {
@@ -24,6 +26,7 @@ impl MMU {
             boot_rom: DMG_BIN,
             ram: ram,
             gpu: GPU::new(display),
+            irq: IRQ::new(),
         }
     }
 
@@ -44,7 +47,8 @@ impl MMU {
             0x80...0x97 => self.gpu.get_tile_row(address - 0x8000),
             0x98...0x9B => self.gpu.get_tile_map_0(address - 0x9800),
             0x9C...0x9F => self.gpu.get_tile_map_1(address - 0x9C00),
-            0xff => match address & 0xff {
+            0xFF => match address & 0xFF {
+                0x0F => self.irq.get_interrupt_bits(),
                 0x40 => self.gpu.get_control(),
                 0x42 => self.gpu.get_scroll_y(),
                 0x43 => self.gpu.get_scroll_x(),
@@ -57,6 +61,7 @@ impl MMU {
                 0x4A => self.gpu.get_window_y(),
                 0x4B => self.gpu.get_window_x(),
                 0x80...0xFE => self.ram[index],
+                0xFF => self.irq.get_enabled_bits(),
                 _ => panic!("unsupported read 0x{:X}", address),
             },
             _ => {
@@ -73,7 +78,8 @@ impl MMU {
             0x80...0x97 => self.gpu.set_tile_row(address - 0x8000, byte),
             0x98...0x9B => self.gpu.set_tile_map_0(address - 0x9800, byte),
             0x9C...0x9F => self.gpu.set_tile_map_1(address - 0x9C00, byte),
-            0xff => match address & 0xff {
+            0xFF => match address & 0xFF {
+                0x0F => self.irq.set_interrupt_bits(byte),
                 0x11 => println!("SOUND NOT IMPLEMENTED"),
                 0x12 => println!("SOUND NOT IMPLEMENTED"),
                 0x13 => println!("SOUND NOT IMPLEMENTED"),
@@ -94,6 +100,7 @@ impl MMU {
                 0x4A => self.gpu.set_window_y(byte),
                 0x4B => self.gpu.set_window_x(byte),
                 0x80...0xFE => self.ram[index] = byte,
+                0xFF => self.irq.set_enabled_bits(byte),
                 _ => panic!("unsupported write 0x{:X} = {:X}", address, byte),
             },
             _ => {
@@ -105,6 +112,10 @@ impl MMU {
 }
 
 impl MemoryBus for MMU {
+    fn ack_interrupt(&mut self) -> Option<u16> {
+        self.irq.ack_interrupt()
+    }
+
     fn get_byte(&mut self, address: u16) -> u8 {
         self.emulate();
         self.get_byte_internal(address)
