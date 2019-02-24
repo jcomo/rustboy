@@ -4,6 +4,7 @@ use self::boot::DMG_BIN;
 use crate::gameboy::cpu::MemoryBus;
 use crate::gameboy::gpu::GPU;
 use crate::gameboy::irq::IRQ;
+use crate::gameboy::serial::Serial;
 use crate::gameboy::VideoDisplay;
 
 pub struct MMU {
@@ -12,6 +13,7 @@ pub struct MMU {
     ram: [u8; 0x10_000],
     gpu: GPU,
     irq: IRQ,
+    serial: Serial,
 }
 
 impl MMU {
@@ -27,6 +29,7 @@ impl MMU {
             ram: ram,
             gpu: GPU::new(display),
             irq: IRQ::new(),
+            serial: Serial::new(),
         }
     }
 
@@ -48,6 +51,8 @@ impl MMU {
             0x98...0x9B => self.gpu.get_tile_map_0(address - 0x9800),
             0x9C...0x9F => self.gpu.get_tile_map_1(address - 0x9C00),
             0xFF => match address & 0xFF {
+                0x01 => self.serial.get_data(),
+                0x02 => self.serial.get_control(),
                 0x0F => self.irq.get_interrupt_bits(),
                 0x40 => self.gpu.get_control(),
                 0x41 => self.gpu.get_stat(),
@@ -80,6 +85,8 @@ impl MMU {
             0x98...0x9B => self.gpu.set_tile_map_0(address - 0x9800, byte),
             0x9C...0x9F => self.gpu.set_tile_map_1(address - 0x9C00, byte),
             0xFF => match address & 0xFF {
+                0x01 => self.serial.set_data(byte),
+                0x02 => self.serial.set_control(byte),
                 0x0F => self.irq.set_interrupt_bits(byte),
                 0x11 => println!("SOUND NOT IMPLEMENTED"),
                 0x12 => println!("SOUND NOT IMPLEMENTED"),
