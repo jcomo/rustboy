@@ -68,6 +68,13 @@ impl Registers {
         old_value
     }
 
+    /// Decrements the BC register; returns the old value
+    pub fn decrement_bc(&mut self) -> u16 {
+        let old_value = self.get_bc();
+        self.set_bc(old_value.wrapping_sub(1));
+        old_value
+    }
+
     pub fn get_de(&self) -> u16 {
         bits::to_word(self.d, self.e)
     }
@@ -165,6 +172,9 @@ mod test {
 
         assert_eq!(regs.increment_bc(), 0xF123);
         assert_eq!(regs.get_bc(), 0xF124);
+
+        assert_eq!(regs.decrement_bc(), 0xF124);
+        assert_eq!(regs.get_bc(), 0xF123);
     }
 
     #[test]

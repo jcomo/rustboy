@@ -5,6 +5,7 @@ use crate::gameboy::cpu::MemoryBus;
 use crate::gameboy::gpu::GPU;
 use crate::gameboy::irq::IRQ;
 use crate::gameboy::serial::Serial;
+use crate::gameboy::timer::Timer;
 use crate::gameboy::VideoDisplay;
 
 pub struct MMU {
@@ -13,6 +14,7 @@ pub struct MMU {
     ram: [u8; 0x10_000],
     gpu: GPU,
     irq: IRQ,
+    timer: Timer,
     serial: Serial,
 }
 
@@ -29,6 +31,7 @@ impl MMU {
             ram: ram,
             gpu: GPU::new(display),
             irq: IRQ::new(),
+            timer: Timer::new(),
             serial: Serial::new(),
         }
     }
@@ -66,6 +69,7 @@ impl MMU {
                 0x49 => self.gpu.get_obj_palette_1(),
                 0x4A => self.gpu.get_window_y(),
                 0x4B => self.gpu.get_window_x(),
+                0x4C...0x7F => 0xFF, // Empty
                 0x80...0xFE => self.ram[index],
                 0xFF => self.irq.get_enabled_bits(),
                 _ => panic!("unsupported read 0x{:X}", address),
@@ -108,6 +112,7 @@ impl MMU {
                 0x50 => self.is_checking_boot_rom = false,
                 0x4A => self.gpu.set_window_y(byte),
                 0x4B => self.gpu.set_window_x(byte),
+                0x4C...0x7F => (/* Empty */),
                 0x80...0xFE => self.ram[index] = byte,
                 0xFF => self.irq.set_enabled_bits(byte),
                 _ => panic!("unsupported write 0x{:X} = {:X}", address, byte),

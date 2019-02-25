@@ -3,6 +3,7 @@ mod gpu;
 mod irq;
 mod memory;
 mod serial;
+mod timer;
 
 use self::cpu::CPU;
 use self::memory::MMU;

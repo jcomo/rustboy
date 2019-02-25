@@ -18,6 +18,11 @@ pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
 fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
     match op {
         0x00 => debug("NOP"),
+        0x01 => {
+            debug("LD (BC), nn");
+            let word = cpu.get_word(memory);
+            cpu.registers.set_bc(word);
+        }
         0x03 => {
             debug("INC BC");
             cpu.registers.increment_bc();
@@ -41,6 +46,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("LD (nn), SP");
             let address = cpu.get_word(memory);
             memory.set_word(address, cpu.registers.sp);
+        }
+        0x0B => {
+            debug("DEC BC");
+            cpu.registers.decrement_bc();
         }
         0x0C => {
             debug("INC C");
@@ -128,6 +137,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("JR Z, n");
             jr_cc(cpu, memory, cpu.registers.f.zero);
         }
+        0x2A => {
+            debug("LDI A, (HL)");
+            cpu.registers.a = memory.get_byte(cpu.registers.get_hl());
+            cpu.registers.increment_hl();
+        }
         0x2D => {
             debug("DEC L");
             cpu.registers.l = dec(cpu, cpu.registers.l);
@@ -147,8 +161,8 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         }
         0x32 => {
             debug("LDD (HL), A");
-            let address = cpu.registers.decrement_hl();
-            memory.set_byte(address, cpu.registers.a);
+            memory.set_byte(cpu.registers.get_hl(), cpu.registers.a);
+            cpu.registers.decrement_hl();
         }
         0x33 => {
             debug("INC SP");
@@ -218,6 +232,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("XOR A, A");
             let value = xor(cpu, cpu.registers.a, cpu.registers.a);
             cpu.registers.a = value;
+        }
+        0xBC => {
+            debug("CP H");
+            sub(cpu, cpu.registers.a, cpu.registers.h);
         }
         0xBE => {
             debug("CP (HL)");
