@@ -228,6 +228,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("SUB B");
             cpu.registers.a = sub(cpu, cpu.registers.a, cpu.registers.b);
         }
+        0xA7 => {
+            debug("AND A");
+            let value = and(cpu, cpu.registers.a, cpu.registers.a);
+            cpu.registers.a = value;
+        }
         0xAF => {
             debug("XOR A, A");
             let value = xor(cpu, cpu.registers.a, cpu.registers.a);
@@ -247,6 +252,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let byte = memory.get_byte(cpu.registers.get_hl());
             sub(cpu, cpu.registers.a, byte);
         }
+        0xC0 => {
+            debug("RET NZ");
+            ret_cc(cpu, memory, !cpu.registers.f.zero);
+        }
         0xC1 => {
             debug("POP BC");
             let word = pop(cpu, memory);
@@ -262,6 +271,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = cpu.registers.get_bc();
             push(cpu, memory, address);
         }
+        0xC8 => {
+            debug("RET Z");
+            ret_cc(cpu, memory, cpu.registers.f.zero);
+        }
         0xC9 => {
             debug("RET");
             ret(cpu, memory);
@@ -270,6 +283,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("CALL nn");
             let address = cpu.get_word(memory);
             call(cpu, memory, address);
+        }
+        0xD5 => {
+            debug("PUSH DE");
+            push(cpu, memory, cpu.registers.get_de());
         }
         0xE0 => {
             debug("LDH (n), A");
@@ -281,6 +298,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("LD (C), A");
             let address = bits::to_word(0xFF, cpu.registers.c);
             memory.set_byte(address, cpu.registers.a);
+        }
+        0xE5 => {
+            debug("PUSH HL");
+            push(cpu, memory, cpu.registers.get_hl());
         }
         0xEA => {
             debug("LD (nn), A");
@@ -296,6 +317,15 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0xF3 => {
             debug("DI");
             cpu.reset_ime();
+        }
+        0xF5 => {
+            debug("PUSH AF");
+            push(cpu, memory, cpu.registers.get_af());
+        }
+        0xFA => {
+            debug("LD A, (nn)");
+            let address = cpu.get_word(memory);
+            cpu.registers.a = memory.get_byte(address);
         }
         0xFB => {
             debug("EI");
@@ -375,6 +405,15 @@ fn sub(cpu: &mut CPU, left: u8, right: u8) -> u8 {
     result
 }
 
+fn and(cpu: &mut CPU, left: u8, right: u8) -> u8 {
+    let result = left & right;
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = false;
+    result
+}
+
 fn or(cpu: &mut CPU, left: u8, right: u8) -> u8 {
     let result = left | right;
     cpu.registers.f.zero = result == 0;
@@ -444,7 +483,13 @@ fn call(cpu: &mut CPU, memory: &mut MemoryBus, address: u16) {
 }
 
 fn ret(cpu: &mut CPU, memory: &mut MemoryBus) {
-    cpu.registers.pc = pop(cpu, memory);
+    ret_cc(cpu, memory, true);
+}
+
+fn ret_cc(cpu: &mut CPU, memory: &mut MemoryBus, check: bool) {
+    if check {
+        cpu.registers.pc = pop(cpu, memory);
+    }
 }
 
 fn jr_n(cpu: &mut CPU, memory: &mut MemoryBus) {
