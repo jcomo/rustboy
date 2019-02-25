@@ -54,6 +54,9 @@ impl MMU {
                 0x01 => self.serial.get_data(),
                 0x02 => self.serial.get_control(),
                 0x0F => self.irq.get_interrupt_bits(),
+                0x10...0x14 => self.read_sound_byte(address),
+                0x16...0x2F => self.read_sound_byte(address),
+                0x30...0x3F => self.read_sound_byte(address),
                 0x40 => self.gpu.get_control(),
                 0x41 => self.gpu.get_stat(),
                 0x42 => self.gpu.get_scroll_y(),
@@ -66,6 +69,7 @@ impl MMU {
                 0x49 => self.gpu.get_obj_palette_1(),
                 0x4A => self.gpu.get_window_y(),
                 0x4B => self.gpu.get_window_x(),
+                0x4C...0x7F => 0xFF, // Empty
                 0x80...0xFE => self.ram[index],
                 0xFF => self.irq.get_enabled_bits(),
                 _ => panic!("unsupported read 0x{:X}", address),
@@ -88,26 +92,23 @@ impl MMU {
                 0x01 => self.serial.set_data(byte),
                 0x02 => self.serial.set_control(byte),
                 0x0F => self.irq.set_interrupt_bits(byte),
-                0x11 => println!("SOUND NOT IMPLEMENTED"),
-                0x12 => println!("SOUND NOT IMPLEMENTED"),
-                0x13 => println!("SOUND NOT IMPLEMENTED"),
-                0x14 => println!("SOUND NOT IMPLEMENTED"),
-                0x24 => println!("SOUND NOT IMPLEMENTED"),
-                0x25 => println!("SOUND NOT IMPLEMENTED"),
-                0x26 => println!("SOUND NOT IMPLEMENTED"),
+                0x10...0x14 => self.write_sound_byte(address, byte),
+                0x16...0x2F => self.write_sound_byte(address, byte),
+                0x30...0x3F => self.write_sound_byte(address, byte),
                 0x40 => self.gpu.set_control(byte),
                 0x41 => self.gpu.set_stat(byte),
                 0x42 => self.gpu.set_scroll_y(byte),
                 0x43 => self.gpu.set_scroll_x(byte),
                 0x44 => self.gpu.reset_current_line(),
                 0x45 => self.gpu.set_compare_line(byte),
-                0x46 => panic!("DMA request"),
+                0x46 => println!("DMA request"),
                 0x47 => self.gpu.set_bg_palette(byte),
                 0x48 => self.gpu.set_obj_palette_0(byte),
                 0x49 => self.gpu.set_obj_palette_1(byte),
                 0x50 => self.is_checking_boot_rom = false,
                 0x4A => self.gpu.set_window_y(byte),
                 0x4B => self.gpu.set_window_x(byte),
+                0x4C...0x7F => (/* Empty */),
                 0x80...0xFE => self.ram[index] = byte,
                 0xFF => self.irq.set_enabled_bits(byte),
                 _ => panic!("unsupported write 0x{:X} = {:X}", address, byte),
@@ -117,6 +118,18 @@ impl MMU {
                 self.ram[index] = byte;
             }
         }
+    }
+
+    fn read_sound_byte(&self, address: u16) -> u8 {
+        println!("[sound] not implemented; read (0x{:x})", address);
+        0xFF
+    }
+
+    fn write_sound_byte(&mut self, address: u16, byte: u8) {
+        println!(
+            "[sound] not implemented; write (0x{:x}) = 0x{:x}",
+            address, byte
+        );
     }
 }
 

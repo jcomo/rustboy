@@ -56,8 +56,13 @@ impl CPU {
         bits::to_word(msb, lsb)
     }
 
-    pub fn set_ime(&mut self) {
+    pub fn set_ime_delayed(&mut self) {
         self.ime_queued = true;
+    }
+
+    pub fn set_ime(&mut self) {
+        self.ime = true;
+        self.ime_queued = false;
     }
 
     pub fn reset_ime(&mut self) {
@@ -72,14 +77,14 @@ impl CPU {
 
         bus.ack_interrupt().map(|address| {
             self.reset_ime();
-
-            // Push the current PC onto the stack
-            self.registers.decrement_sp();
-            self.registers.decrement_sp();
-            bus.set_word(self.registers.sp, self.registers.pc);
-
-            // Set the PC to the pre-determined address for the interrupt
+            self.push_pc_onto_stack(bus);
             self.registers.pc = address;
         });
+    }
+
+    fn push_pc_onto_stack(&mut self, bus: &mut MemoryBus) {
+        self.registers.decrement_sp();
+        self.registers.decrement_sp();
+        bus.set_word(self.registers.sp, self.registers.pc);
     }
 }

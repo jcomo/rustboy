@@ -18,6 +18,11 @@ pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
 fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
     match op {
         0x00 => debug("NOP"),
+        0x01 => {
+            debug("LD BC, nn");
+            let word = cpu.get_word(memory);
+            cpu.registers.set_bc(word);
+        }
         0x03 => {
             debug("INC BC");
             cpu.registers.increment_bc();
@@ -41,6 +46,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("LD (nn), SP");
             let address = cpu.get_word(memory);
             memory.set_word(address, cpu.registers.sp);
+        }
+        0x0B => {
+            debug("DEC BC");
+            cpu.registers.decrement_bc();
         }
         0x0C => {
             debug("INC C");
@@ -128,6 +137,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("JR Z, n");
             jr_cc(cpu, memory, cpu.registers.f.zero);
         }
+        0x2A => {
+            debug("LDI A, (HL)");
+            cpu.registers.a = memory.get_byte(cpu.registers.get_hl());
+            cpu.registers.increment_hl();
+        }
         0x2D => {
             debug("DEC L");
             cpu.registers.l = dec(cpu, cpu.registers.l);
@@ -154,6 +168,12 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("INC SP");
             cpu.registers.increment_sp();
         }
+        0x34 => {
+            debug("INC (HL)");
+            let address = cpu.registers.get_hl();
+            let byte = memory.get_byte(address);
+            memory.set_byte(address, inc(cpu, byte));
+        }
         0x36 => {
             debug("LD (HL), n");
             let byte = cpu.get_byte(memory);
@@ -162,6 +182,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x38 => {
             debug("JR C, n");
             jr_cc(cpu, memory, cpu.registers.f.carry);
+        }
+        0x3C => {
+            debug("INC A");
+            let result = inc(cpu, cpu.registers.a);
+            cpu.registers.a = result;
         }
         0x3D => {
             debug("DEC A");
@@ -214,20 +239,38 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("SUB B");
             cpu.registers.a = sub(cpu, cpu.registers.a, cpu.registers.b);
         }
+        0xA7 => {
+            debug("AND A");
+            let value = and(cpu, cpu.registers.a, cpu.registers.a);
+            cpu.registers.a = value;
+        }
         0xAF => {
             debug("XOR A, A");
             let value = xor(cpu, cpu.registers.a, cpu.registers.a);
             cpu.registers.a = value;
+        }
+        0xB1 => {
+            debug("OR C");
+            let value = or(cpu, cpu.registers.a, cpu.registers.c);
+            cpu.registers.a = value;
+        }
+        0xBC => {
+            debug("CP H");
+            sub(cpu, cpu.registers.a, cpu.registers.h);
         }
         0xBE => {
             debug("CP (HL)");
             let byte = memory.get_byte(cpu.registers.get_hl());
             sub(cpu, cpu.registers.a, byte);
         }
+        0xC0 => {
+            debug("RET NZ");
+            ret_cc(cpu, memory, !cpu.registers.f.zero);
+        }
         0xC1 => {
             debug("POP BC");
-            let word = pop(cpu, memory);
-            cpu.registers.set_bc(word);
+            let address = pop(cpu, memory);
+            cpu.registers.set_bc(address);
         }
         0xC3 => {
             debug("JP nn");
@@ -239,6 +282,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = cpu.registers.get_bc();
             push(cpu, memory, address);
         }
+        0xC8 => {
+            debug("RET Z");
+            ret_cc(cpu, memory, cpu.registers.f.zero);
+        }
         0xC9 => {
             debug("RET");
             ret(cpu, memory);
@@ -248,16 +295,39 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = cpu.get_word(memory);
             call(cpu, memory, address);
         }
+        0xD1 => {
+            debug("POP DE");
+            let address = pop(cpu, memory);
+            cpu.registers.set_de(address);
+        }
+        0xD5 => {
+            debug("PUSH DE");
+            push(cpu, memory, cpu.registers.get_de());
+        }
+        0xD9 => {
+            debug("RETI");
+            cpu.set_ime();
+            ret(cpu, memory);
+        }
         0xE0 => {
             debug("LDH (n), A");
             let offset = cpu.get_byte(memory);
             let address = bits::to_word(0xFF, offset);
             memory.set_byte(address, cpu.registers.a);
         }
+        0xE1 => {
+            debug("POP HL");
+            let address = pop(cpu, memory);
+            cpu.registers.set_hl(address);
+        }
         0xE2 => {
             debug("LD (C), A");
             let address = bits::to_word(0xFF, cpu.registers.c);
             memory.set_byte(address, cpu.registers.a);
+        }
+        0xE5 => {
+            debug("PUSH HL");
+            push(cpu, memory, cpu.registers.get_hl());
         }
         0xEA => {
             debug("LD (nn), A");
@@ -270,13 +340,27 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = bits::to_word(0xFF, offset);
             cpu.registers.a = memory.get_byte(address);
         }
+        0xF1 => {
+            debug("POP AF");
+            let address = pop(cpu, memory);
+            cpu.registers.set_af(address);
+        }
         0xF3 => {
             debug("DI");
             cpu.reset_ime();
         }
+        0xF5 => {
+            debug("PUSH AF");
+            push(cpu, memory, cpu.registers.get_af());
+        }
+        0xFA => {
+            debug("LD A, (nn)");
+            let address = cpu.get_word(memory);
+            cpu.registers.a = memory.get_byte(address);
+        }
         0xFB => {
             debug("EI");
-            cpu.set_ime();
+            cpu.set_ime_delayed();
         }
         0xFE => {
             debug("CP n");
@@ -352,6 +436,24 @@ fn sub(cpu: &mut CPU, left: u8, right: u8) -> u8 {
     result
 }
 
+fn and(cpu: &mut CPU, left: u8, right: u8) -> u8 {
+    let result = left & right;
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = false;
+    result
+}
+
+fn or(cpu: &mut CPU, left: u8, right: u8) -> u8 {
+    let result = left | right;
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = false;
+    result
+}
+
 fn xor(cpu: &mut CPU, left: u8, right: u8) -> u8 {
     let result = left ^ right;
     cpu.registers.f.zero = result == 0;
@@ -412,7 +514,13 @@ fn call(cpu: &mut CPU, memory: &mut MemoryBus, address: u16) {
 }
 
 fn ret(cpu: &mut CPU, memory: &mut MemoryBus) {
-    cpu.registers.pc = pop(cpu, memory);
+    ret_cc(cpu, memory, true);
+}
+
+fn ret_cc(cpu: &mut CPU, memory: &mut MemoryBus, check: bool) {
+    if check {
+        cpu.registers.pc = pop(cpu, memory);
+    }
 }
 
 fn jr_n(cpu: &mut CPU, memory: &mut MemoryBus) {
