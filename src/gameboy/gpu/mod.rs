@@ -266,9 +266,13 @@ pub struct GPU {
     remaining_cycles: i32,
     scroll_x: u8,
     scroll_y: u8,
+    window_x: u8,
+    window_y: u8,
     control: Control,
     stat: Stat,
     bg_palette: Palette,
+    obj_palette_0: Palette,
+    obj_palette_1: Palette,
     tile_map_0: [u8; TILE_MAP_SIZE],
     tile_map_1: [u8; TILE_MAP_SIZE],
     tile_data: [Tile; NUM_TILES],
@@ -284,9 +288,13 @@ impl GPU {
             remaining_cycles: Mode::OAM.cycles(),
             scroll_x: 0,
             scroll_y: 0,
+            window_x: 0,
+            window_y: 0,
             control: Control::new(),
             stat: Stat::new(),
             bg_palette: Palette::new(),
+            obj_palette_0: Palette::new(),
+            obj_palette_1: Palette::new(),
             tile_map_0: [0; TILE_MAP_SIZE],
             tile_map_1: [0; TILE_MAP_SIZE],
             tile_data: [Tile::new(); NUM_TILES],
@@ -347,19 +355,19 @@ impl GPU {
     }
 
     pub fn get_window_x(&self) -> u8 {
-        panic!("get_window_x()")
+        self.window_x
     }
 
     pub fn set_window_x(&mut self, value: u8) {
-        panic!("set_window_x(0x{:X})", value)
+        self.window_x = value
     }
 
     pub fn get_window_y(&self) -> u8 {
-        panic!("get_window_y()")
+        self.window_y
     }
 
     pub fn set_window_y(&mut self, value: u8) {
-        panic!("set_window_y(0x{:X})", value)
+        self.window_y = value
     }
 
     pub fn get_bg_palette(&self) -> u8 {
@@ -370,20 +378,20 @@ impl GPU {
         self.bg_palette = Palette::from(value)
     }
 
-    pub fn get_object_palette_0(&self) -> u8 {
-        panic!("get_object_palette_0()")
+    pub fn get_obj_palette_0(&self) -> u8 {
+        u8::from(&self.obj_palette_0)
     }
 
-    pub fn set_object_palette_0(&mut self, value: u8) {
-        panic!("set_object_palette_0(0x{:X})", value)
+    pub fn set_obj_palette_0(&mut self, value: u8) {
+        self.obj_palette_0 = Palette::from(value)
     }
 
-    pub fn get_object_palette_1(&self) -> u8 {
-        panic!("get_object_palette_1()")
+    pub fn get_obj_palette_1(&self) -> u8 {
+        u8::from(&self.obj_palette_1)
     }
 
-    pub fn set_object_palette_1(&mut self, value: u8) {
-        panic!("set_object_palette_1(0x{:X})", value)
+    pub fn set_obj_palette_1(&mut self, value: u8) {
+        self.obj_palette_1 = Palette::from(value)
     }
 
     pub fn get_tile_map_0(&self, address: u16) -> u8 {
@@ -636,6 +644,28 @@ mod test {
 
         assert_eq!(gpu.get_bg_palette(), 0xFF);
         assert_eq!(gpu.bg_palette, palette);
+    }
+
+    #[test]
+    fn gpu_obj_palette_0() {
+        let mut gpu = GPU::test();
+        let palette = Palette::from(0xFF);
+
+        gpu.set_obj_palette_0(0xFF);
+
+        assert_eq!(gpu.get_obj_palette_0(), 0xFF);
+        assert_eq!(gpu.obj_palette_0, palette);
+    }
+
+    #[test]
+    fn gpu_obj_palette_1() {
+        let mut gpu = GPU::test();
+        let palette = Palette::from(0xFF);
+
+        gpu.set_obj_palette_1(0xFF);
+
+        assert_eq!(gpu.get_obj_palette_1(), 0xFF);
+        assert_eq!(gpu.obj_palette_1, palette);
     }
 
     #[test]
