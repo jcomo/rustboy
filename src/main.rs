@@ -23,7 +23,7 @@ fn main() {
         process::exit(1);
     });
 
-    let mut display = Box::new(SDLDisplay::new(5));
+    let mut display = Box::new(SDLDisplay::new(2));
     let mut gameboy = GameBoy::new(&data, display);
 
     println!("[start] RustBoy");
