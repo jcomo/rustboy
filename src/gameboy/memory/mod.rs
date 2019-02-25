@@ -4,7 +4,9 @@ use self::boot::DMG_BIN;
 use crate::gameboy::cpu::MemoryBus;
 use crate::gameboy::gpu::GPU;
 use crate::gameboy::irq::IRQ;
+use crate::gameboy::joypad::Joypad;
 use crate::gameboy::serial::Serial;
+use crate::gameboy::timer::Timer;
 use crate::gameboy::VideoDisplay;
 
 pub struct MMU {
@@ -13,6 +15,8 @@ pub struct MMU {
     ram: [u8; 0x10_000],
     gpu: GPU,
     irq: IRQ,
+    timer: Timer,
+    joypad: Joypad,
     serial: Serial,
 }
 
@@ -29,6 +33,8 @@ impl MMU {
             ram: ram,
             gpu: GPU::new(display),
             irq: IRQ::new(),
+            timer: Timer::new(),
+            joypad: Joypad::new(),
             serial: Serial::new(),
         }
     }
@@ -51,8 +57,13 @@ impl MMU {
             0x98...0x9B => self.gpu.get_tile_map_0(address - 0x9800),
             0x9C...0x9F => self.gpu.get_tile_map_1(address - 0x9C00),
             0xFF => match address & 0xFF {
+                0x00 => self.joypad.get_data(),
                 0x01 => self.serial.get_data(),
                 0x02 => self.serial.get_control(),
+                0x04 => self.timer.get_div(),
+                0x05 => self.timer.get_tima(),
+                0x06 => self.timer.get_tma(),
+                0x07 => self.timer.get_tac(),
                 0x0F => self.irq.get_interrupt_bits(),
                 0x10...0x14 => self.read_sound_byte(address),
                 0x16...0x2F => self.read_sound_byte(address),
@@ -89,8 +100,13 @@ impl MMU {
             0x98...0x9B => self.gpu.set_tile_map_0(address - 0x9800, byte),
             0x9C...0x9F => self.gpu.set_tile_map_1(address - 0x9C00, byte),
             0xFF => match address & 0xFF {
+                0x00 => self.joypad.set_data(byte),
                 0x01 => self.serial.set_data(byte),
                 0x02 => self.serial.set_control(byte),
+                0x04 => self.timer.reset_div(),
+                0x05 => self.timer.set_tima(byte),
+                0x06 => self.timer.set_tma(byte),
+                0x07 => self.timer.set_tac(byte),
                 0x0F => self.irq.set_interrupt_bits(byte),
                 0x10...0x14 => self.write_sound_byte(address, byte),
                 0x16...0x2F => self.write_sound_byte(address, byte),

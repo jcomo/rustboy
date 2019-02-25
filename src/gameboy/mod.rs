@@ -1,8 +1,10 @@
 mod cpu;
 mod gpu;
 mod irq;
+mod joypad;
 mod memory;
 mod serial;
+mod timer;
 
 use self::cpu::CPU;
 use self::memory::MMU;
