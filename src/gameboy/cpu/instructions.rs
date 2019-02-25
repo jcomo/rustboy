@@ -19,7 +19,7 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
     match op {
         0x00 => debug("NOP"),
         0x01 => {
-            debug("LD (BC), nn");
+            debug("LD BC, nn");
             let word = cpu.get_word(memory);
             cpu.registers.set_bc(word);
         }
@@ -161,8 +161,8 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         }
         0x32 => {
             debug("LDD (HL), A");
-            memory.set_byte(cpu.registers.get_hl(), cpu.registers.a);
-            cpu.registers.decrement_hl();
+            let address = cpu.registers.decrement_hl();
+            memory.set_byte(address, cpu.registers.a);
         }
         0x33 => {
             debug("INC SP");
@@ -170,9 +170,9 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         }
         0x34 => {
             debug("INC (HL)");
-            let byte = memory.get_byte(cpu.registers.get_hl());
-            let result = inc(cpu, byte);
-            memory.set_byte(cpu.registers.get_hl(), result);
+            let address = cpu.registers.get_hl();
+            let byte = memory.get_byte(address);
+            memory.set_byte(address, inc(cpu, byte));
         }
         0x36 => {
             debug("LD (HL), n");
