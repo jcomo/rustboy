@@ -154,6 +154,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("INC SP");
             cpu.registers.increment_sp();
         }
+        0x36 => {
+            debug("LD (HL), n");
+            let byte = cpu.get_byte(memory);
+            cpu.registers.set_hl(byte.into());
+        }
         0x38 => {
             debug("JR C, n");
             jr_cc(cpu, memory, cpu.registers.f.carry);
