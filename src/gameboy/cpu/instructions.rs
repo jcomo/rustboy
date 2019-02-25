@@ -233,6 +233,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let value = xor(cpu, cpu.registers.a, cpu.registers.a);
             cpu.registers.a = value;
         }
+        0xB1 => {
+            debug("OR C");
+            let value = or(cpu, cpu.registers.a, cpu.registers.c);
+            cpu.registers.a = value;
+        }
         0xBC => {
             debug("CP H");
             sub(cpu, cpu.registers.a, cpu.registers.h);
@@ -367,6 +372,15 @@ fn sub(cpu: &mut CPU, left: u8, right: u8) -> u8 {
     cpu.registers.f.subtract = true;
     cpu.registers.f.half_carry = (right & 0xF) > (left & 0xF);
     cpu.registers.f.carry = right > left;
+    result
+}
+
+fn or(cpu: &mut CPU, left: u8, right: u8) -> u8 {
+    let result = left | right;
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = false;
     result
 }
 
