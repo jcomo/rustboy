@@ -104,7 +104,7 @@ impl MMU {
                 0x43 => self.gpu.set_scroll_x(byte),
                 0x44 => self.gpu.reset_current_line(),
                 0x45 => self.gpu.set_compare_line(byte),
-                0x46 => panic!("DMA request"),
+                0x46 => println!("DMA request"),
                 0x47 => self.gpu.set_bg_palette(byte),
                 0x48 => self.gpu.set_obj_palette_0(byte),
                 0x49 => self.gpu.set_obj_palette_1(byte),

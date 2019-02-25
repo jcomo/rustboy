@@ -168,6 +168,12 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("INC SP");
             cpu.registers.increment_sp();
         }
+        0x34 => {
+            debug("INC (HL)");
+            let byte = memory.get_byte(cpu.registers.get_hl());
+            let result = inc(cpu, byte);
+            memory.set_byte(cpu.registers.get_hl(), result);
+        }
         0x36 => {
             debug("LD (HL), n");
             let byte = cpu.get_byte(memory);
@@ -176,6 +182,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x38 => {
             debug("JR C, n");
             jr_cc(cpu, memory, cpu.registers.f.carry);
+        }
+        0x3C => {
+            debug("INC A");
+            let result = inc(cpu, cpu.registers.a);
+            cpu.registers.a = result;
         }
         0x3D => {
             debug("DEC A");
@@ -258,8 +269,8 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         }
         0xC1 => {
             debug("POP BC");
-            let word = pop(cpu, memory);
-            cpu.registers.set_bc(word);
+            let address = pop(cpu, memory);
+            cpu.registers.set_bc(address);
         }
         0xC3 => {
             debug("JP nn");
@@ -284,15 +295,30 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = cpu.get_word(memory);
             call(cpu, memory, address);
         }
+        0xD1 => {
+            debug("POP DE");
+            let address = pop(cpu, memory);
+            cpu.registers.set_de(address);
+        }
         0xD5 => {
             debug("PUSH DE");
             push(cpu, memory, cpu.registers.get_de());
+        }
+        0xD9 => {
+            debug("RETI");
+            cpu.set_ime();
+            ret(cpu, memory);
         }
         0xE0 => {
             debug("LDH (n), A");
             let offset = cpu.get_byte(memory);
             let address = bits::to_word(0xFF, offset);
             memory.set_byte(address, cpu.registers.a);
+        }
+        0xE1 => {
+            debug("POP HL");
+            let address = pop(cpu, memory);
+            cpu.registers.set_hl(address);
         }
         0xE2 => {
             debug("LD (C), A");
@@ -314,6 +340,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = bits::to_word(0xFF, offset);
             cpu.registers.a = memory.get_byte(address);
         }
+        0xF1 => {
+            debug("POP AF");
+            let address = pop(cpu, memory);
+            cpu.registers.set_af(address);
+        }
         0xF3 => {
             debug("DI");
             cpu.reset_ime();
@@ -329,7 +360,7 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         }
         0xFB => {
             debug("EI");
-            cpu.set_ime();
+            cpu.set_ime_delayed();
         }
         0xFE => {
             debug("CP n");

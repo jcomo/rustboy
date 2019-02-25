@@ -56,8 +56,13 @@ impl CPU {
         bits::to_word(msb, lsb)
     }
 
-    pub fn set_ime(&mut self) {
+    pub fn set_ime_delayed(&mut self) {
         self.ime_queued = true;
+    }
+
+    pub fn set_ime(&mut self) {
+        self.ime = true;
+        self.ime_queued = false;
     }
 
     pub fn reset_ime(&mut self) {
