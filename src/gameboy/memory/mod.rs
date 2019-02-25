@@ -5,7 +5,6 @@ use crate::gameboy::cpu::MemoryBus;
 use crate::gameboy::gpu::GPU;
 use crate::gameboy::irq::IRQ;
 use crate::gameboy::serial::Serial;
-use crate::gameboy::timer::Timer;
 use crate::gameboy::VideoDisplay;
 
 pub struct MMU {
@@ -14,7 +13,6 @@ pub struct MMU {
     ram: [u8; 0x10_000],
     gpu: GPU,
     irq: IRQ,
-    timer: Timer,
     serial: Serial,
 }
 
@@ -31,7 +29,6 @@ impl MMU {
             ram: ram,
             gpu: GPU::new(display),
             irq: IRQ::new(),
-            timer: Timer::new(),
             serial: Serial::new(),
         }
     }
