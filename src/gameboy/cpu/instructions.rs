@@ -529,7 +529,7 @@ fn sub(cpu: &mut CPU, left: u8, right: u8) -> u8 {
     let result = left.wrapping_sub(right);
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.subtract = true;
-    cpu.registers.f.half_carry = (right & 0xF) > (left & 0xF);
+    cpu.registers.f.half_carry = (right & 0x0F) > (left & 0x0F);
     cpu.registers.f.carry = right > left;
     result
 }
@@ -538,7 +538,7 @@ fn and(cpu: &mut CPU, left: u8, right: u8) -> u8 {
     let result = left & right;
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.subtract = false;
-    cpu.registers.f.half_carry = false;
+    cpu.registers.f.half_carry = true;
     cpu.registers.f.carry = false;
     result
 }
