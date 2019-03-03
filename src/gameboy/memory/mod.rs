@@ -1,6 +1,8 @@
 mod boot;
+mod dma;
 
 use self::boot::DMG_BIN;
+use self::dma::DMA;
 use crate::gameboy::cpu::MemoryBus;
 use crate::gameboy::gpu::GPU;
 use crate::gameboy::irq::IRQ;
@@ -8,6 +10,8 @@ use crate::gameboy::joypad::Joypad;
 use crate::gameboy::serial::Serial;
 use crate::gameboy::timer::Timer;
 use crate::gameboy::VideoDisplay;
+
+const EMPTY_READ: u8 = 0xFF;
 
 pub struct MMU {
     is_checking_boot_rom: bool,
@@ -18,6 +22,7 @@ pub struct MMU {
     timer: Timer,
     joypad: Joypad,
     serial: Serial,
+    dma: DMA,
 }
 
 impl MMU {
@@ -36,11 +41,20 @@ impl MMU {
             timer: Timer::new(),
             joypad: Joypad::new(),
             serial: Serial::new(),
+            dma: DMA::new(),
         }
     }
 
     fn emulate(&mut self) {
+        self.emulate_oam_dma();
         self.gpu.emulate(&mut self.irq);
+    }
+
+    fn emulate_oam_dma(&mut self) {
+        self.dma.emulate().map(|address| {
+            let value = self.get_byte_internal(address);
+            self.gpu.write_oam(address as u8, value);
+        });
     }
 
     fn get_byte_internal(&self, address: u16) -> u8 {
@@ -56,6 +70,10 @@ impl MMU {
             0x80...0x97 => self.gpu.get_tile_row(address - 0x8000),
             0x98...0x9B => self.gpu.get_tile_map_0(address - 0x9800),
             0x9C...0x9F => self.gpu.get_tile_map_1(address - 0x9C00),
+            0xFE => match address & 0xFF {
+                0x00...0x9F => self.gpu.read_oam(address as u8),
+                _ => EMPTY_READ,
+            },
             0xFF => match address & 0xFF {
                 0x00 => self.joypad.get_data(),
                 0x01 => self.serial.get_data(),
@@ -74,13 +92,13 @@ impl MMU {
                 0x43 => self.gpu.get_scroll_x(),
                 0x44 => self.gpu.get_current_line(),
                 0x45 => self.gpu.get_compare_line(),
-                0x46 => panic!("get DMA source"),
+                0x46 => self.dma.get_source(),
                 0x47 => self.gpu.get_bg_palette(),
                 0x48 => self.gpu.get_obj_palette_0(),
                 0x49 => self.gpu.get_obj_palette_1(),
                 0x4A => self.gpu.get_window_y(),
                 0x4B => self.gpu.get_window_x(),
-                0x4C...0x7F => 0xFF, // Empty
+                0x4C...0x7F => EMPTY_READ,
                 0x80...0xFE => self.ram[index],
                 0xFF => self.irq.get_enabled_bits(),
                 _ => panic!("unsupported read 0x{:X}", address),
@@ -99,6 +117,10 @@ impl MMU {
             0x80...0x97 => self.gpu.set_tile_row(address - 0x8000, byte),
             0x98...0x9B => self.gpu.set_tile_map_0(address - 0x9800, byte),
             0x9C...0x9F => self.gpu.set_tile_map_1(address - 0x9C00, byte),
+            0xFE => match address & 0xFF {
+                0x00...0x9F => self.gpu.write_oam(address as u8, byte),
+                _ => (),
+            },
             0xFF => match address & 0xFF {
                 0x00 => self.joypad.set_data(byte),
                 0x01 => self.serial.set_data(byte),
@@ -117,14 +139,14 @@ impl MMU {
                 0x43 => self.gpu.set_scroll_x(byte),
                 0x44 => self.gpu.reset_current_line(),
                 0x45 => self.gpu.set_compare_line(byte),
-                0x46 => println!("DMA request"),
+                0x46 => self.dma.initialize(byte),
                 0x47 => self.gpu.set_bg_palette(byte),
                 0x48 => self.gpu.set_obj_palette_0(byte),
                 0x49 => self.gpu.set_obj_palette_1(byte),
                 0x50 => self.is_checking_boot_rom = false,
                 0x4A => self.gpu.set_window_y(byte),
                 0x4B => self.gpu.set_window_x(byte),
-                0x4C...0x7F => (/* Empty */),
+                0x4C...0x7F => (), // Empty
                 0x80...0xFE => self.ram[index] = byte,
                 0xFF => self.irq.set_enabled_bits(byte),
                 _ => panic!("unsupported write 0x{:X} = {:X}", address, byte),
