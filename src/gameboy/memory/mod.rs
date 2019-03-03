@@ -48,6 +48,7 @@ impl MMU {
     fn emulate(&mut self) {
         self.emulate_oam_dma();
         self.gpu.emulate(&mut self.irq);
+        self.timer.emulate(&mut self.irq);
     }
 
     fn emulate_oam_dma(&mut self) {
