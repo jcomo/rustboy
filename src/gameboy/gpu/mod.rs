@@ -27,6 +27,8 @@ const NUM_TILES: usize = 384;
 const BYTES_PER_TILE: usize = 16;
 const TILE_MAP_SIZE: usize = 0x400;
 
+const NUM_SPRITES: usize = 40;
+
 impl From<u8> for Color {
     fn from(byte: u8) -> Color {
         match byte {
@@ -233,16 +235,14 @@ impl Mode {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 struct Tile {
     bytes: [u8; BYTES_PER_TILE],
 }
 
 impl Tile {
     fn new() -> Tile {
-        Tile {
-            bytes: [0; BYTES_PER_TILE],
-        }
+        Tile::default()
     }
 
     /// Returns the color data for the given (x, y) pixel in the tile
@@ -256,6 +256,56 @@ impl Tile {
         let lsb = (bottom >> shift) & 0x1;
         let value = (msb << 1) | lsb;
         Color::from(value)
+    }
+}
+
+#[derive(Copy, Clone, Default)]
+struct Sprite {
+    y: u8,
+    x: u8,
+    tile_num: u8,
+    flags: SpriteFlags,
+}
+
+impl Sprite {
+    fn new() -> Sprite {
+        Sprite::default()
+    }
+
+    fn get_x(&self) -> u8 {
+        self.x.wrapping_sub(8)
+    }
+
+    fn get_y(&self) -> u8 {
+        self.y.wrapping_sub(16)
+    }
+}
+
+#[derive(Copy, Clone, Default)]
+struct SpriteFlags {
+    priority: bool,
+    flip_y: bool,
+    flip_x: bool,
+    palette: bool,
+}
+
+impl From<u8> for SpriteFlags {
+    fn from(byte: u8) -> SpriteFlags {
+        SpriteFlags {
+            priority: bits::is_set(byte, 7),
+            flip_y: bits::is_set(byte, 6),
+            flip_x: bits::is_set(byte, 5),
+            palette: bits::is_set(byte, 4),
+        }
+    }
+}
+
+impl From<&SpriteFlags> for u8 {
+    fn from(flags: &SpriteFlags) -> u8 {
+        bits::from_bool(flags.priority) << 7
+            | bits::from_bool(flags.flip_y) << 6
+            | bits::from_bool(flags.flip_x) << 5
+            | bits::from_bool(flags.palette) << 4
     }
 }
 
@@ -276,6 +326,7 @@ pub struct GPU {
     tile_map_0: [u8; TILE_MAP_SIZE],
     tile_map_1: [u8; TILE_MAP_SIZE],
     tile_data: [Tile; NUM_TILES],
+    sprites: [Sprite; NUM_SPRITES],
     display: Box<dyn VideoDisplay>,
 }
 
@@ -298,6 +349,7 @@ impl GPU {
             tile_map_0: [0; TILE_MAP_SIZE],
             tile_map_1: [0; TILE_MAP_SIZE],
             tile_data: [Tile::new(); NUM_TILES],
+            sprites: [Sprite::new(); NUM_SPRITES],
             display: display,
         }
     }
@@ -418,6 +470,26 @@ impl GPU {
     pub fn set_tile_row(&mut self, address: u16, byte: u8) {
         let mut tile = &mut self.tile_data[(address / 16) as usize];
         tile.bytes[(address % 16) as usize] = byte;
+    }
+
+    pub fn read_oam(&self, address: u8) -> u8 {
+        let sprite = self.sprites[(address / 4) as usize];
+        match address % 4 {
+            0 => sprite.y,
+            1 => sprite.x,
+            2 => sprite.tile_num,
+            _ => u8::from(&sprite.flags),
+        }
+    }
+
+    pub fn write_oam(&mut self, address: u8, byte: u8) {
+        let mut sprite = &mut self.sprites[(address / 4) as usize];
+        match address % 4 {
+            0 => sprite.y = byte,
+            1 => sprite.x = byte,
+            2 => sprite.tile_num = byte,
+            _ => sprite.flags = SpriteFlags::from(byte),
+        }
     }
 
     pub fn emulate(&mut self, irq: &mut IRQ) {
