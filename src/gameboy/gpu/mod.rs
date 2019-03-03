@@ -634,14 +634,6 @@ mod test {
         }
     }
 
-    impl IRQ {
-        fn enabled() -> IRQ {
-            let mut irq = IRQ::new();
-            irq.set_enabled_bits(0xFF);
-            irq
-        }
-    }
-
     #[test]
     fn palette_from_u8() {
         let palette = Palette::from(0b11_10_01_00);

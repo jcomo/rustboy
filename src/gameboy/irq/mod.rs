@@ -112,6 +112,14 @@ impl IRQ {
 mod test {
     use super::*;
 
+    impl IRQ {
+        pub fn enabled() -> IRQ {
+            let mut irq = IRQ::new();
+            irq.set_enabled_bits(0xFF);
+            irq
+        }
+    }
+
     #[test]
     fn bit_helpers() {
         assert_eq!(isolate_rightmost_bit(0b110100), 0b100);

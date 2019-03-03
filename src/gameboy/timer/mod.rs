@@ -106,42 +106,107 @@ impl Timer {
 
     pub fn get_div(&self) -> u8 {
         // Set frequency of 16384 Hz, so will count up every 2^6 = 64 cycles
-        println!("[timer] get_div");
         (self.counter >> 6) as u8
     }
 
     pub fn reset_div(&mut self) {
-        println!("[timer] reset_div");
         self.counter = 0;
     }
 
     pub fn get_tima(&self) -> u8 {
-        println!("[timer] get_tima");
         self.tima
     }
 
     pub fn set_tima(&mut self, byte: u8) {
-        println!("[timer] set_tima");
         self.tima = byte;
     }
 
     pub fn get_tma(&self) -> u8 {
-        println!("[timer] get_tma");
         self.tma
     }
 
     pub fn set_tma(&mut self, byte: u8) {
-        println!("[timer] set_tma");
         self.tma = byte;
     }
 
     pub fn get_tac(&self) -> u8 {
-        println!("[timer] get_tac");
         u8::from(&self.tac)
     }
 
     pub fn set_tac(&mut self, byte: u8) {
-        println!("[timer] set_tac");
         self.tac = Control::from(byte);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn emulate_div() {
+        let mut timer = Timer::new();
+        let mut irq = IRQ::enabled();
+
+        for _ in 0..128 {
+            timer.emulate(&mut irq);
+        }
+
+        assert_eq!(timer.get_div(), 2);
+        assert_eq!(irq.ack_interrupt(), None);
+    }
+
+    #[test]
+    fn emulate_disabled() {
+        let mut timer = Timer::new();
+        let mut irq = IRQ::enabled();
+
+        timer.tac.enabled = false;
+        timer.tac.clock_bit_1 = false;
+        timer.tac.clock_bit_0 = true;
+
+        for _ in 0..8 {
+            timer.emulate(&mut irq);
+        }
+
+        assert_eq!(timer.get_tima(), 0);
+        assert_eq!(irq.ack_interrupt(), None);
+    }
+
+    #[test]
+    fn emulate_increment() {
+        let mut timer = Timer::new();
+        let mut irq = IRQ::enabled();
+
+        timer.tac.enabled = true;
+        timer.tac.clock_bit_1 = false;
+        timer.tac.clock_bit_0 = true;
+
+        for _ in 0..8 {
+            timer.emulate(&mut irq);
+        }
+
+        assert_eq!(timer.get_tima(), 2);
+        assert_eq!(irq.ack_interrupt(), None);
+    }
+
+    #[test]
+    fn emulate_overflow() {
+        let mut timer = Timer::new();
+        let mut irq = IRQ::enabled();
+
+        timer.tac.enabled = true;
+        timer.tac.clock_bit_1 = false;
+        timer.tac.clock_bit_0 = true;
+
+        timer.set_tima(0xFF);
+        timer.set_tma(0x10);
+
+        for _ in 0..4 {
+            timer.emulate(&mut irq);
+        }
+
+        assert_eq!(timer.get_tima(), 0x10);
+        assert_eq!(timer.get_tma(), 0x10);
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::Timer.get_addr()));
     }
 }
