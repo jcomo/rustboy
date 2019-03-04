@@ -76,6 +76,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let byte = cpu.get_byte(memory);
             cpu.registers.c = byte;
         }
+        0x0F => {
+            debug("RRCA");
+            cpu.registers.a = rotate_right(cpu, cpu.registers.a);
+        }
         0x11 => {
             debug("LD DE, nn");
             let word = cpu.get_word(memory);
@@ -275,6 +279,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("LD A, n");
             let byte = cpu.get_byte(memory);
             cpu.registers.a = byte;
+        }
+        0x3F => {
+            debug("CCF");
+            complement_carry(cpu);
         }
         0x40 => {
             debug("LD B, B");
@@ -542,6 +550,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("LD A, A");
             cpu.registers.a = cpu.registers.a;
         }
+        0x80 => {
+            debug("ADD A, B");
+            cpu.registers.a = add(cpu, cpu.registers.a, cpu.registers.b);
+        }
         0x81 => {
             debug("ADD A, C");
             cpu.registers.a = add(cpu, cpu.registers.a, cpu.registers.c);
@@ -554,6 +566,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x87 => {
             debug("ADD A, A");
             cpu.registers.a = add(cpu, cpu.registers.a, cpu.registers.a);
+        }
+        0x8C => {
+            debug("ADC A, H");
+            cpu.registers.a = add_carry(cpu, cpu.registers.a, cpu.registers.h);
         }
         0x90 => {
             debug("SUB B");
@@ -825,6 +841,14 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let value = cpu.get_byte(memory);
             sub(cpu, cpu.registers.a, value);
         }
+        0xCF => {
+            debug("RST 08H");
+            reset(cpu, memory, 0x08);
+        }
+        0xDF => {
+            debug("RST 18H");
+            reset(cpu, memory, 0x18);
+        }
         0xEF => {
             debug("RST 28H");
             reset(cpu, memory, 0x28);
@@ -848,6 +872,11 @@ fn execute_extended(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let result = rotate_left_carry(cpu, cpu.registers.c);
             cpu.registers.c = result;
         }
+        0x18 => {
+            debug("RR B");
+            let result = rotate_right_carry(cpu, cpu.registers.b);
+            cpu.registers.b = result;
+        }
         0x19 => {
             debug("RR C");
             let result = rotate_right_carry(cpu, cpu.registers.c);
@@ -863,13 +892,24 @@ fn execute_extended(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let result = rotate_right_carry(cpu, cpu.registers.e);
             cpu.registers.e = result;
         }
+        0x26 => {
+            debug("SLA (HL)");
+            let byte = memory.get_byte(cpu.registers.get_hl());
+            let result = shift_left(cpu, byte);
+            memory.set_byte(cpu.registers.get_hl(), result);
+        }
         0x37 => {
             debug("SWAP A");
             cpu.registers.a = swap(cpu, cpu.registers.a);
         }
         0x38 => {
             debug("SRL B");
-            // TODO
+            cpu.registers.b = shift_right(cpu, cpu.registers.b);
+        }
+        0x6E => {
+            debug("BIT 6, (HL)");
+            let byte = memory.get_byte(cpu.registers.get_hl());
+            test_bit(cpu, byte, 6);
         }
         0x7C => {
             debug("BIT 7, H");
@@ -1043,12 +1083,27 @@ fn complement(cpu: &mut CPU, value: u8) -> u8 {
     result
 }
 
+fn complement_carry(cpu: &mut CPU) {
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = !cpu.registers.f.carry;
+}
+
 fn shift_left(cpu: &mut CPU, value: u8) -> u8 {
     let result = value << 1;
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.subtract = false;
     cpu.registers.f.half_carry = false;
-    cpu.registers.f.carry = result < value;
+    cpu.registers.f.carry = bits::to_bool(value & 0x80);
+    result
+}
+
+fn shift_right(cpu: &mut CPU, value: u8) -> u8 {
+    let result = value >> 1;
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = bits::to_bool(value & 0x1);
     result
 }
 
