@@ -143,6 +143,27 @@ mod test {
     use super::*;
 
     #[test]
+    fn control_counter_mask() {
+        let mut control = Control::default();
+
+        control.clock_bit_1 = true;
+        control.clock_bit_0 = true;
+        assert_eq!(control.counter_mask(), 0b0011_1111);
+
+        control.clock_bit_1 = true;
+        control.clock_bit_0 = false;
+        assert_eq!(control.counter_mask(), 0b0000_1111);
+
+        control.clock_bit_1 = false;
+        control.clock_bit_0 = true;
+        assert_eq!(control.counter_mask(), 0b0000_0011);
+
+        control.clock_bit_1 = false;
+        control.clock_bit_0 = false;
+        assert_eq!(control.counter_mask(), 0b1111_1111);
+    }
+
+    #[test]
     fn emulate_div() {
         let mut timer = Timer::new();
         let mut irq = IRQ::enabled();
