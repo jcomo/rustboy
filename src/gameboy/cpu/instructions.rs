@@ -1178,7 +1178,7 @@ fn inc(cpu: &mut CPU, value: u8) -> u8 {
     let result = value.wrapping_add(1);
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.subtract = false;
-    cpu.registers.f.half_carry = (value & 0x0F) == 0;
+    cpu.registers.f.half_carry = (value & 0x0F) == 0x0F;
     result
 }
 
@@ -1186,7 +1186,7 @@ fn dec(cpu: &mut CPU, value: u8) -> u8 {
     let result = value.wrapping_sub(1);
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.subtract = true;
-    cpu.registers.f.half_carry = (value & 0x0f) == 0;
+    cpu.registers.f.half_carry = (value & 0x0F) == 0;
     result
 }
 
