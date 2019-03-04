@@ -47,6 +47,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = cpu.get_word(memory);
             memory.set_word(address, cpu.registers.sp);
         }
+        0x09 => {
+            debug("ADD HL, BC");
+            let result = add_16(cpu, cpu.registers.get_hl(), cpu.registers.get_bc());
+            cpu.registers.set_hl(result);
+        }
         0x0A => {
             debug("LD A, (BC)");
             let value = memory.get_byte(cpu.registers.get_bc());
@@ -118,6 +123,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = cpu.registers.get_de();
             cpu.registers.a = memory.get_byte(address);
         }
+        0x1B => {
+            debug("DEC DE");
+            cpu.registers.decrement_de();
+        }
         0x1C => {
             debug("INC E");
             cpu.registers.e = inc(cpu, cpu.registers.e);
@@ -179,6 +188,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("LDI A, (HL)");
             cpu.registers.a = memory.get_byte(cpu.registers.get_hl());
             cpu.registers.increment_hl();
+        }
+        0x2B => {
+            debug("DEC HL");
+            cpu.registers.decrement_hl();
         }
         0x2C => {
             debug("INC L");

@@ -91,6 +91,13 @@ impl Registers {
         old_value
     }
 
+    /// Decrements the DE register; returns the old value
+    pub fn decrement_de(&mut self) -> u16 {
+        let old_value = self.get_de();
+        self.set_de(old_value.wrapping_sub(1));
+        old_value
+    }
+
     pub fn get_hl(&self) -> u16 {
         bits::to_word(self.h, self.l)
     }
