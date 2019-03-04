@@ -597,6 +597,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             cpu.set_ime();
             ret(cpu, memory);
         }
+        0xDE => {
+            debug("SBC A, n");
+            let byte = cpu.get_byte(memory);
+            cpu.registers.a = sub_carry(cpu, cpu.registers.a, byte);
+        }
         0xE0 => {
             debug("LDH (n), A");
             let offset = cpu.get_byte(memory);
@@ -660,6 +665,12 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0xF5 => {
             debug("PUSH AF");
             push(cpu, memory, cpu.registers.get_af());
+        }
+        0xF6 => {
+            debug("OR n");
+            let byte = cpu.get_byte(memory);
+            let value = or(cpu, cpu.registers.a, byte);
+            cpu.registers.a = value;
         }
         0xF8 => {
             debug("LDHL SP, n");
@@ -778,10 +789,11 @@ fn add(cpu: &mut CPU, left: u8, right: u8) -> u8 {
 
 fn add_carry(cpu: &mut CPU, left: u8, right: u8) -> u8 {
     let carry_value = bits::from_bool(cpu.registers.f.carry);
-    let value = right.wrapping_add(carry_value);
+    let result = left.wrapping_add(right).wrapping_add(carry_value);
 
-    let (result, carry) = left.overflowing_add(value);
-    let half_carry = (left & 0x0F) + (right & 0x0F) > 0x0F;
+    let carry = (left as u16 + right as u16 + carry_value as u16) > 0xFF;
+    let half_carry = ((left & 0x0F) + (right & 0x0F) + carry_value) > 0x0F;
+
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.subtract = false;
     cpu.registers.f.half_carry = half_carry;
@@ -820,6 +832,20 @@ fn sub(cpu: &mut CPU, left: u8, right: u8) -> u8 {
     cpu.registers.f.subtract = true;
     cpu.registers.f.half_carry = (right & 0x0F) > (left & 0x0F);
     cpu.registers.f.carry = right > left;
+    result
+}
+
+fn sub_carry(cpu: &mut CPU, left: u8, right: u8) -> u8 {
+    let carry_value = bits::from_bool(cpu.registers.f.carry);
+    let result = left.wrapping_sub(right).wrapping_sub(carry_value);
+
+    let carry = (right as u16 + carry_value as u16) > left as u16;
+    let half_carry = ((right & 0x0F) + carry_value) > (left & 0x0F);
+
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = true;
+    cpu.registers.f.half_carry = half_carry;
+    cpu.registers.f.carry = carry;
     result
 }
 
