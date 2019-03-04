@@ -47,6 +47,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = cpu.get_word(memory);
             memory.set_word(address, cpu.registers.sp);
         }
+        0x0A => {
+            debug("LD A, (BC)");
+            let value = memory.get_byte(cpu.registers.get_bc());
+            cpu.registers.a = value;
+        }
         0x0B => {
             debug("DEC BC");
             cpu.registers.decrement_bc();
@@ -79,6 +84,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x13 => {
             debug("INC DE");
             cpu.registers.increment_de();
+        }
+        0x14 => {
+            debug("INC D");
+            let result = inc(cpu, cpu.registers.d);
+            cpu.registers.d = result;
         }
         0x15 => {
             debug("DEC D");
@@ -121,6 +131,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let byte = cpu.get_byte(memory);
             cpu.registers.e = byte;
         }
+        0x1F => {
+            debug("RRA");
+            let result = rotate_right_carry(cpu, cpu.registers.a);
+            cpu.registers.a = result;
+        }
         0x20 => {
             debug("JR NZ, n");
             jr_cc(cpu, memory, !cpu.registers.f.zero);
@@ -147,14 +162,27 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("DEC H");
             cpu.registers.h = dec(cpu, cpu.registers.h);
         }
+        0x26 => {
+            debug("LD H, n");
+            cpu.registers.h = cpu.get_byte(memory);
+        }
         0x28 => {
             debug("JR Z, n");
             jr_cc(cpu, memory, cpu.registers.f.zero);
+        }
+        0x29 => {
+            debug("ADD HL, HL");
+            let result = add_16(cpu, cpu.registers.get_hl(), cpu.registers.get_hl());
+            cpu.registers.set_hl(result);
         }
         0x2A => {
             debug("LDI A, (HL)");
             cpu.registers.a = memory.get_byte(cpu.registers.get_hl());
             cpu.registers.increment_hl();
+        }
+        0x2C => {
+            debug("INC L");
+            cpu.registers.l = inc(cpu, cpu.registers.l);
         }
         0x2D => {
             debug("DEC L");
@@ -192,14 +220,30 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let byte = memory.get_byte(address);
             memory.set_byte(address, inc(cpu, byte));
         }
+        0x35 => {
+            debug("DEC (HL)");
+            let address = cpu.registers.get_hl();
+            let byte = memory.get_byte(address);
+            memory.set_byte(address, dec(cpu, byte));
+        }
         0x36 => {
             debug("LD (HL), n");
             let byte = cpu.get_byte(memory);
-            cpu.registers.set_hl(byte.into());
+            let address = cpu.registers.get_hl();
+            memory.set_byte(address, byte);
         }
         0x38 => {
             debug("JR C, n");
             jr_cc(cpu, memory, cpu.registers.f.carry);
+        }
+        0x39 => {
+            debug("ADD HL, SP");
+            let result = add_16(cpu, cpu.registers.get_hl(), cpu.registers.sp);
+            cpu.registers.set_hl(result);
+        }
+        0x3B => {
+            debug("DEC SP");
+            cpu.registers.decrement_sp();
         }
         0x3C => {
             debug("INC A");
@@ -215,9 +259,19 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let byte = cpu.get_byte(memory);
             cpu.registers.a = byte;
         }
+        0x46 => {
+            debug("LD B, (HL)");
+            let value = memory.get_byte(cpu.registers.get_hl());
+            cpu.registers.b = value;
+        }
         0x47 => {
             debug("LD B, A");
             cpu.registers.b = cpu.registers.a;
+        }
+        0x4E => {
+            debug("LD C, (HL)");
+            let value = memory.get_byte(cpu.registers.get_hl());
+            cpu.registers.c = value;
         }
         0x4F => {
             debug("LD C, A");
@@ -232,6 +286,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("LD D, A");
             cpu.registers.d = cpu.registers.a;
         }
+        0x5D => {
+            debug("LD E, L");
+            cpu.registers.e = cpu.registers.l;
+        }
         0x5E => {
             debug("LD E, (HL)");
             let byte = memory.get_byte(cpu.registers.get_hl());
@@ -241,9 +299,93 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("LD E, A");
             cpu.registers.e = cpu.registers.a;
         }
+        0x62 => {
+            debug("LD H, D");
+            cpu.registers.h = cpu.registers.d;
+        }
+        0x63 => {
+            debug("LD H, E");
+            cpu.registers.h = cpu.registers.e;
+        }
+        0x64 => {
+            debug("LD H, H");
+            cpu.registers.h = cpu.registers.h;
+        }
+        0x65 => {
+            debug("LD H, L");
+            cpu.registers.h = cpu.registers.l;
+        }
+        0x66 => {
+            debug("LD H, (HL)");
+            let byte = memory.get_byte(cpu.registers.get_hl());
+            cpu.registers.h = byte;
+        }
         0x67 => {
             debug("LD H, A");
             cpu.registers.h = cpu.registers.a;
+        }
+        0x68 => {
+            debug("LD L, B");
+            cpu.registers.l = cpu.registers.b;
+        }
+        0x69 => {
+            debug("LD L, C");
+            cpu.registers.l = cpu.registers.c;
+        }
+        0x6A => {
+            debug("LD L, D");
+            cpu.registers.l = cpu.registers.d;
+        }
+        0x6B => {
+            debug("LD L, E");
+            cpu.registers.l = cpu.registers.e;
+        }
+        0x6C => {
+            debug("LD L, H");
+            cpu.registers.l = cpu.registers.h;
+        }
+        0x6D => {
+            debug("LD L, L");
+            cpu.registers.l = cpu.registers.l;
+        }
+        0x6E => {
+            debug("LD L, (HL)");
+            let byte = memory.get_byte(cpu.registers.get_hl());
+            cpu.registers.l = byte;
+        }
+        0x6F => {
+            debug("LD L, A");
+            cpu.registers.l = cpu.registers.a;
+        }
+        0x70 => {
+            debug("LD (HL), B");
+            let address = cpu.registers.get_hl();
+            memory.set_byte(address, cpu.registers.b);
+        }
+        0x71 => {
+            debug("LD (HL), C");
+            let address = cpu.registers.get_hl();
+            memory.set_byte(address, cpu.registers.c);
+        }
+        0x72 => {
+            debug("LD (HL), D");
+            let address = cpu.registers.get_hl();
+            memory.set_byte(address, cpu.registers.d);
+        }
+        0x73 => {
+            debug("LD (HL), E");
+            let address = cpu.registers.get_hl();
+            memory.set_byte(address, cpu.registers.e);
+        }
+        0x74 => {
+            debug("LD (HL), H");
+            let address = cpu.registers.get_hl();
+            memory.set_byte(address, cpu.registers.h);
+        }
+        0x75 => {
+            debug("LD (HL), L");
+            let address = cpu.registers.get_hl();
+            memory.set_byte(address, cpu.registers.l);
         }
         0x77 => {
             debug("LD (HL), A");
@@ -257,6 +399,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x79 => {
             debug("LD A, C");
             cpu.registers.a = cpu.registers.c;
+        }
+        0x7A => {
+            debug("LD A, D");
+            cpu.registers.a = cpu.registers.d;
         }
         0x7B => {
             debug("LD A, E");
@@ -274,6 +420,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("LD A, (HL)");
             let byte = memory.get_byte(cpu.registers.get_hl());
             cpu.registers.a = byte;
+        }
+        0x81 => {
+            debug("ADD A, C");
+            cpu.registers.a = add(cpu, cpu.registers.a, cpu.registers.c);
         }
         0x86 => {
             debug("ADD A, (HL)");
@@ -298,10 +448,40 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let value = and(cpu, cpu.registers.a, cpu.registers.a);
             cpu.registers.a = value;
         }
+        0xA8 => {
+            debug("XOR B");
+            let value = xor(cpu, cpu.registers.a, cpu.registers.b);
+            cpu.registers.a = value;
+        }
         0xA9 => {
             debug("XOR C");
             let value = xor(cpu, cpu.registers.a, cpu.registers.c);
             cpu.registers.a = value;
+        }
+        0xAA => {
+            debug("XOR D");
+            let value = xor(cpu, cpu.registers.a, cpu.registers.d);
+            cpu.registers.a = value;
+        }
+        0xAB => {
+            debug("XOR E");
+            let value = xor(cpu, cpu.registers.a, cpu.registers.e);
+            cpu.registers.a = value;
+        }
+        0xAC => {
+            debug("XOR H");
+            let value = xor(cpu, cpu.registers.a, cpu.registers.h);
+            cpu.registers.a = value;
+        }
+        0xAD => {
+            debug("XOR L");
+            let value = xor(cpu, cpu.registers.a, cpu.registers.l);
+            cpu.registers.a = value;
+        }
+        0xAE => {
+            debug("XOR (HL)");
+            let value = memory.get_byte(cpu.registers.get_hl());
+            cpu.registers.a = xor(cpu, cpu.registers.a, value);
         }
         0xAF => {
             debug("XOR A");
@@ -311,11 +491,21 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0xB0 => {
             debug("OR B");
             let value = or(cpu, cpu.registers.a, cpu.registers.b);
-            cpu.registers.b = value;
+            cpu.registers.a = value;
         }
         0xB1 => {
             debug("OR C");
             let value = or(cpu, cpu.registers.a, cpu.registers.c);
+            cpu.registers.a = value;
+        }
+        0xB6 => {
+            debug("OR (HL)");
+            let value = memory.get_byte(cpu.registers.get_hl());
+            cpu.registers.a = or(cpu, cpu.registers.a, value);
+        }
+        0xB7 => {
+            debug("OR A");
+            let value = or(cpu, cpu.registers.a, cpu.registers.a);
             cpu.registers.a = value;
         }
         0xBC => {
@@ -336,14 +526,28 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = pop(cpu, memory);
             cpu.registers.set_bc(address);
         }
+        0xC2 => {
+            debug("JP NZ, nn");
+            let address = cpu.get_word(memory);
+            jp_cc(cpu, memory, !cpu.registers.f.zero);
+        }
         0xC3 => {
             debug("JP nn");
             jp_n(cpu, memory);
+        }
+        0xC4 => {
+            debug("CALL NZ, nn");
+            call_cc(cpu, memory, !cpu.registers.f.zero);
         }
         0xC5 => {
             debug("PUSH BC");
             let address = cpu.registers.get_bc();
             push(cpu, memory, address);
+        }
+        0xC6 => {
+            debug("ADD A, n");
+            let value = cpu.get_byte(memory);
+            cpu.registers.a = add(cpu, cpu.registers.a, value);
         }
         0xC8 => {
             debug("RET Z");
@@ -359,8 +563,16 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         }
         0xCD => {
             debug("CALL nn");
-            let address = cpu.get_word(memory);
-            call(cpu, memory, address);
+            call(cpu, memory);
+        }
+        0xCE => {
+            debug("ADC A, n");
+            let value = cpu.get_byte(memory);
+            cpu.registers.a = add_carry(cpu, cpu.registers.a, value);
+        }
+        0xD0 => {
+            debug("RET NC");
+            ret_cc(cpu, memory, !cpu.registers.f.carry);
         }
         0xD1 => {
             debug("POP DE");
@@ -370,6 +582,15 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0xD5 => {
             debug("PUSH DE");
             push(cpu, memory, cpu.registers.get_de());
+        }
+        0xD6 => {
+            debug("SUB n");
+            let value = cpu.get_byte(memory);
+            cpu.registers.a = sub(cpu, cpu.registers.a, value);
+        }
+        0xD8 => {
+            debug("RET C");
+            ret_cc(cpu, memory, cpu.registers.f.carry);
         }
         0xD9 => {
             debug("RETI");
@@ -401,6 +622,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let byte = cpu.get_byte(memory);
             cpu.registers.a = and(cpu, cpu.registers.a, byte);
         }
+        0xE8 => {
+            debug("ADD SP, n");
+            let byte = cpu.get_byte(memory);
+            cpu.registers.sp = add_sp(cpu, byte);
+        }
         0xE9 => {
             debug("JP HL");
             let address = cpu.registers.get_hl();
@@ -411,8 +637,13 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = cpu.get_word(memory);
             memory.set_byte(address, cpu.registers.a);
         }
+        0xEE => {
+            debug("XOR n");
+            let value = cpu.get_byte(memory);
+            cpu.registers.a = xor(cpu, cpu.registers.a, value);
+        }
         0xF0 => {
-            debug("LDH A, (n)");
+            debug("LDH A, n");
             let offset = cpu.get_byte(memory);
             let address = bits::to_word(0xFF, offset);
             cpu.registers.a = memory.get_byte(address);
@@ -429,6 +660,16 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0xF5 => {
             debug("PUSH AF");
             push(cpu, memory, cpu.registers.get_af());
+        }
+        0xF8 => {
+            debug("LDHL SP, n");
+            let byte = cpu.get_byte(memory);
+            let result = add_sp(cpu, byte);
+            cpu.registers.set_hl(result);
+        }
+        0xF9 => {
+            debug("LD SP, HL");
+            cpu.registers.sp = cpu.registers.get_hl();
         }
         0xFA => {
             debug("LD A, (nn)");
@@ -467,9 +708,28 @@ fn execute_extended(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let result = rotate_left_carry(cpu, cpu.registers.c);
             cpu.registers.c = result;
         }
+        0x19 => {
+            debug("RR C");
+            let result = rotate_right_carry(cpu, cpu.registers.c);
+            cpu.registers.c = result;
+        }
+        0x1A => {
+            debug("RR D");
+            let result = rotate_right_carry(cpu, cpu.registers.d);
+            cpu.registers.d = result;
+        }
+        0x1B => {
+            debug("RR E");
+            let result = rotate_right_carry(cpu, cpu.registers.e);
+            cpu.registers.e = result;
+        }
         0x37 => {
             debug("SWAP A");
             cpu.registers.a = swap(cpu, cpu.registers.a);
+        }
+        0x38 => {
+            debug("SRL B");
+            // TODO
         }
         0x7C => {
             debug("BIT 7, H");
@@ -516,12 +776,41 @@ fn add(cpu: &mut CPU, left: u8, right: u8) -> u8 {
     result
 }
 
+fn add_carry(cpu: &mut CPU, left: u8, right: u8) -> u8 {
+    let carry_value = bits::from_bool(cpu.registers.f.carry);
+    let value = right.wrapping_add(carry_value);
+
+    let (result, carry) = left.overflowing_add(value);
+    let half_carry = (left & 0x0F) + (right & 0x0F) > 0x0F;
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = half_carry;
+    cpu.registers.f.carry = carry;
+    result
+}
+
 fn add_16(cpu: &mut CPU, left: u16, right: u16) -> u16 {
     let (result, carry) = left.overflowing_add(right);
     let half_carry = (left & 0x0FFF) + (right & 0x0FFF) > 0x0FFF;
     cpu.registers.f.subtract = false;
     cpu.registers.f.carry = carry;
     cpu.registers.f.half_carry = half_carry;
+    result
+}
+
+fn add_sp(cpu: &mut CPU, byte: u8) -> u16 {
+    // TODO: go over this implementation
+    let sp = cpu.registers.sp;
+    let value = byte as i8 as i16 as u16;
+    let result = sp.wrapping_add(value);
+
+    let carry = (sp & 0xFF) + (value & 0xFF) > 0xFF;
+    let half_carry = (sp & 0x0F) + (value & 0x0F) > 0x0F;
+
+    cpu.registers.f.zero = false;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = half_carry;
+    cpu.registers.f.carry = carry;
     result
 }
 
@@ -577,6 +866,37 @@ fn shift_left(cpu: &mut CPU, value: u8) -> u8 {
     result
 }
 
+fn rotate_right(cpu: &mut CPU, value: u8) -> u8 {
+    let result = value.rotate_right(1);
+
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = bits::to_bool(value & 0x1);
+    result
+}
+
+fn rotate_right_carry(cpu: &mut CPU, value: u8) -> u8 {
+    let carry = bits::from_bool(cpu.registers.f.carry);
+    let result = (carry << 7) | (value >> 1);
+
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = bits::to_bool(value & 0x1);
+    result
+}
+
+fn rotate_left(cpu: &mut CPU, value: u8) -> u8 {
+    let result = value.rotate_left(1);
+
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = bits::to_bool(value >> 7);
+    result
+}
+
 fn rotate_left_carry(cpu: &mut CPU, value: u8) -> u8 {
     let carry = bits::from_bool(cpu.registers.f.carry);
     let result = (value << 1) | carry;
@@ -584,7 +904,7 @@ fn rotate_left_carry(cpu: &mut CPU, value: u8) -> u8 {
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.subtract = false;
     cpu.registers.f.half_carry = false;
-    cpu.registers.f.carry = (value >> 7) != 0;
+    cpu.registers.f.carry = bits::to_bool(value >> 7);
     result
 }
 
@@ -626,9 +946,18 @@ fn reset(cpu: &mut CPU, memory: &mut MemoryBus, new_pc: u16) {
     cpu.registers.pc = new_pc;
 }
 
-fn call(cpu: &mut CPU, memory: &mut MemoryBus, address: u16) {
-    push(cpu, memory, cpu.registers.pc);
-    cpu.registers.pc = address;
+fn call(cpu: &mut CPU, memory: &mut MemoryBus) {
+    call_cc(cpu, memory, true);
+}
+
+fn call_cc(cpu: &mut CPU, memory: &mut MemoryBus, check: bool) {
+    // Must get before checking to advance cycles
+    let address = cpu.get_word(memory);
+
+    if check {
+        push(cpu, memory, cpu.registers.pc);
+        cpu.registers.pc = address;
+    }
 }
 
 fn ret(cpu: &mut CPU, memory: &mut MemoryBus) {
