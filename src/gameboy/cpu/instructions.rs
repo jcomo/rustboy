@@ -23,6 +23,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let word = cpu.get_word(memory);
             cpu.registers.set_bc(word);
         }
+        0x02 => {
+            debug("LD (BC), A");
+            let address = cpu.registers.get_bc();
+            memory.set_byte(address, cpu.registers.a);
+        }
         0x03 => {
             debug("INC BC");
             cpu.registers.increment_bc();
@@ -269,6 +274,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("ADD HL, SP");
             let result = add_16(cpu, cpu.registers.get_hl(), cpu.registers.sp);
             cpu.registers.set_hl(result);
+        }
+        0x3A => {
+            debug("LDD A, (HL)");
+            cpu.registers.a = memory.get_byte(cpu.registers.get_hl());
+            cpu.registers.decrement_hl();
         }
         0x3B => {
             debug("DEC SP");
@@ -520,6 +530,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = cpu.registers.get_hl();
             memory.set_byte(address, cpu.registers.l);
         }
+        0x76 => {
+            debug("HALT");
+            // TODO: not implemented
+        }
         0x77 => {
             debug("LD (HL), A");
             let address = cpu.registers.get_hl();
@@ -648,6 +662,12 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("SUB L");
             cpu.registers.a = sub(cpu, cpu.registers.a, cpu.registers.l);
         }
+        0x96 => {
+            debug("SUB (HL)");
+            let byte = memory.get_byte(cpu.registers.get_hl());
+            let result = sub(cpu, cpu.registers.a, byte);
+            memory.set_byte(cpu.registers.get_hl(), result);
+        }
         0x97 => {
             debug("SUB A");
             cpu.registers.a = sub(cpu, cpu.registers.a, cpu.registers.a);
@@ -676,6 +696,12 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("SBC A, L");
             cpu.registers.a = sub_carry(cpu, cpu.registers.a, cpu.registers.l);
         }
+        0x9E => {
+            debug("SBC A, (HL)");
+            let byte = memory.get_byte(cpu.registers.get_hl());
+            let result = sub_carry(cpu, cpu.registers.a, byte);
+            memory.set_byte(cpu.registers.get_hl(), byte);
+        }
         0x9F => {
             debug("SBC A, A");
             cpu.registers.a = sub_carry(cpu, cpu.registers.a, cpu.registers.a);
@@ -703,6 +729,12 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0xA5 => {
             debug("AND L");
             cpu.registers.a = and(cpu, cpu.registers.a, cpu.registers.l);
+        }
+        0xA6 => {
+            debug("AND (HL)");
+            let byte = memory.get_byte(cpu.registers.get_hl());
+            let value = and(cpu, cpu.registers.a, byte);
+            memory.set_byte(cpu.registers.get_hl(), byte);
         }
         0xA7 => {
             debug("AND A");
@@ -832,7 +864,6 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         }
         0xC2 => {
             debug("JP NZ, nn");
-            let address = cpu.get_word(memory);
             jp_cc(cpu, memory, !cpu.registers.f.zero);
         }
         0xC3 => {
@@ -853,6 +884,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let value = cpu.get_byte(memory);
             cpu.registers.a = add(cpu, cpu.registers.a, value);
         }
+        0xC7 => {
+            debug("RST 00H");
+            reset(cpu, memory, 0x00);
+        }
         0xC8 => {
             debug("RET Z");
             ret_cc(cpu, memory, cpu.registers.f.zero);
@@ -864,6 +899,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0xCA => {
             debug("JP Z, nn");
             jp_cc(cpu, memory, cpu.registers.f.zero);
+        }
+        0xCC => {
+            debug("CALL Z, nn");
+            call_cc(cpu, memory, cpu.registers.f.zero);
         }
         0xCD => {
             debug("CALL nn");
@@ -883,6 +922,14 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = pop(cpu, memory);
             cpu.registers.set_de(address);
         }
+        0xD2 => {
+            debug("JP NC, nn");
+            jp_cc(cpu, memory, !cpu.registers.f.carry);
+        }
+        0xD4 => {
+            debug("CALL NC, nn");
+            call_cc(cpu, memory, !cpu.registers.f.carry);
+        }
         0xD5 => {
             debug("PUSH DE");
             push(cpu, memory, cpu.registers.get_de());
@@ -892,6 +939,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let value = cpu.get_byte(memory);
             cpu.registers.a = sub(cpu, cpu.registers.a, value);
         }
+        0xD7 => {
+            debug("RST 10H");
+            reset(cpu, memory, 0x10);
+        }
         0xD8 => {
             debug("RET C");
             ret_cc(cpu, memory, cpu.registers.f.carry);
@@ -900,6 +951,14 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("RETI");
             cpu.set_ime();
             ret(cpu, memory);
+        }
+        0xDA => {
+            debug("JP C, nn");
+            jp_cc(cpu, memory, cpu.registers.f.carry);
+        }
+        0xDC => {
+            debug("CALL C, nn");
+            call_cc(cpu, memory, cpu.registers.f.carry);
         }
         0xDE => {
             debug("SBC A, n");
@@ -930,6 +989,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("AND n");
             let byte = cpu.get_byte(memory);
             cpu.registers.a = and(cpu, cpu.registers.a, byte);
+        }
+        0xE7 => {
+            debug("RST 20H");
+            reset(cpu, memory, 0x20);
         }
         0xE8 => {
             debug("ADD SP, n");
@@ -962,6 +1025,11 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let address = pop(cpu, memory);
             cpu.registers.set_af(address);
         }
+        0xF2 => {
+            debug("LD A, (C)");
+            let address = bits::to_word(0xFF, cpu.registers.c);
+            cpu.registers.a = memory.get_byte(address);
+        }
         0xF3 => {
             debug("DI");
             cpu.reset_ime();
@@ -975,6 +1043,10 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             let byte = cpu.get_byte(memory);
             let value = or(cpu, cpu.registers.a, byte);
             cpu.registers.a = value;
+        }
+        0xF7 => {
+            debug("RST 30H");
+            reset(cpu, memory, 0x30);
         }
         0xF8 => {
             debug("LDHL SP, n");
@@ -1050,6 +1122,12 @@ fn execute_extended(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("RLC L");
             cpu.registers.l = rotate_left(cpu, cpu.registers.l);
         }
+        0x06 => {
+            debug("RLC (HL)");
+            let byte = memory.get_byte(cpu.registers.get_hl());
+            let result = rotate_left(cpu, byte);
+            memory.set_byte(cpu.registers.get_hl(), byte);
+        }
         0x07 => {
             debug("RLC A");
             cpu.registers.a = rotate_left(cpu, cpu.registers.a);
@@ -1077,6 +1155,12 @@ fn execute_extended(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x0D => {
             debug("RRC L");
             cpu.registers.l = rotate_right(cpu, cpu.registers.l);
+        }
+        0x0E => {
+            debug("RRC (HL)");
+            let byte = memory.get_byte(cpu.registers.get_hl());
+            let result = rotate_right(cpu, byte);
+            memory.set_byte(cpu.registers.get_hl(), byte);
         }
         0x0F => {
             debug("RRC A");
@@ -1129,6 +1213,11 @@ fn execute_extended(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
             debug("RR E");
             let result = rotate_right_carry(cpu, cpu.registers.e);
             cpu.registers.e = result;
+        }
+        0x1C => {
+            debug("RR H");
+            let result = rotate_right_carry(cpu, cpu.registers.h);
+            cpu.registers.h = result;
         }
         0x26 => {
             debug("SLA (HL)");
