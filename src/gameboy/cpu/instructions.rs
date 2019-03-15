@@ -427,39 +427,240 @@ fn execute_extended(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x13 => rl(cpu, memory, E),
         0x14 => rl(cpu, memory, H),
         0x15 => rl(cpu, memory, L),
+        0x16 => rl(cpu, memory, AddrHL),
         0x17 => rl(cpu, memory, A),
         0x18 => rr(cpu, memory, B),
         0x19 => rr(cpu, memory, C),
         0x1A => rr(cpu, memory, D),
         0x1B => rr(cpu, memory, E),
         0x1C => rr(cpu, memory, H),
-        0x26 => {
-            debug("SLA (HL)");
-            let byte = memory.get_byte(cpu.registers.get_hl());
-            let result = shift_left(cpu, byte);
-            memory.set_byte(cpu.registers.get_hl(), result);
-        }
-        0x37 => {
-            debug("SWAP A");
-            cpu.registers.a = swap(cpu, cpu.registers.a);
-        }
-        0x38 => {
-            debug("SRL B");
-            cpu.registers.b = shift_right(cpu, cpu.registers.b);
-        }
-        0x6E => {
-            debug("BIT 6, (HL)");
-            let byte = memory.get_byte(cpu.registers.get_hl());
-            test_bit(cpu, byte, 6);
-        }
-        0x7C => {
-            debug("BIT 7, H");
-            test_bit(cpu, cpu.registers.h, 7);
-        }
-        0x7D => {
-            debug("BIT 7, L");
-            test_bit(cpu, cpu.registers.l, 7);
-        }
+        0x1D => rr(cpu, memory, L),
+        0x1E => rr(cpu, memory, AddrHL),
+        0x1F => rr(cpu, memory, A),
+        0x20 => sla(cpu, memory, B),
+        0x21 => sla(cpu, memory, C),
+        0x22 => sla(cpu, memory, D),
+        0x23 => sla(cpu, memory, E),
+        0x24 => sla(cpu, memory, H),
+        0x25 => sla(cpu, memory, L),
+        0x26 => sla(cpu, memory, AddrHL),
+        0x27 => sla(cpu, memory, A),
+        0x28 => sra(cpu, memory, B),
+        0x29 => sra(cpu, memory, C),
+        0x2A => sra(cpu, memory, D),
+        0x2B => sra(cpu, memory, E),
+        0x2C => sra(cpu, memory, H),
+        0x2D => sra(cpu, memory, L),
+        0x2E => sra(cpu, memory, AddrHL),
+        0x2F => sra(cpu, memory, A),
+        0x30 => swap(cpu, memory, B),
+        0x31 => swap(cpu, memory, C),
+        0x32 => swap(cpu, memory, D),
+        0x33 => swap(cpu, memory, E),
+        0x34 => swap(cpu, memory, H),
+        0x35 => swap(cpu, memory, L),
+        0x36 => swap(cpu, memory, AddrHL),
+        0x37 => swap(cpu, memory, A),
+        0x38 => srl(cpu, memory, B),
+        0x39 => srl(cpu, memory, C),
+        0x3A => srl(cpu, memory, D),
+        0x3B => srl(cpu, memory, E),
+        0x3C => srl(cpu, memory, H),
+        0x3D => srl(cpu, memory, L),
+        0x3E => srl(cpu, memory, AddrHL),
+        0x3F => srl(cpu, memory, A),
+        0x40 => bit(cpu, memory, B, 0),
+        0x41 => bit(cpu, memory, C, 1),
+        0x42 => bit(cpu, memory, D, 2),
+        0x43 => bit(cpu, memory, E, 3),
+        0x44 => bit(cpu, memory, H, 4),
+        0x45 => bit(cpu, memory, L, 5),
+        0x46 => bit(cpu, memory, AddrHL, 6),
+        0x47 => bit(cpu, memory, A, 7),
+        0x48 => bit(cpu, memory, B, 0),
+        0x49 => bit(cpu, memory, C, 1),
+        0x4A => bit(cpu, memory, D, 2),
+        0x4B => bit(cpu, memory, E, 3),
+        0x4C => bit(cpu, memory, H, 4),
+        0x4D => bit(cpu, memory, L, 5),
+        0x4E => bit(cpu, memory, AddrHL, 6),
+        0x4F => bit(cpu, memory, A, 7),
+        0x50 => bit(cpu, memory, B, 0),
+        0x51 => bit(cpu, memory, C, 1),
+        0x52 => bit(cpu, memory, D, 2),
+        0x53 => bit(cpu, memory, E, 3),
+        0x54 => bit(cpu, memory, H, 4),
+        0x55 => bit(cpu, memory, L, 5),
+        0x56 => bit(cpu, memory, AddrHL, 6),
+        0x57 => bit(cpu, memory, A, 7),
+        0x58 => bit(cpu, memory, B, 0),
+        0x59 => bit(cpu, memory, C, 1),
+        0x5A => bit(cpu, memory, D, 2),
+        0x5B => bit(cpu, memory, E, 3),
+        0x5C => bit(cpu, memory, H, 4),
+        0x5D => bit(cpu, memory, L, 5),
+        0x5E => bit(cpu, memory, AddrHL, 6),
+        0x5F => bit(cpu, memory, A, 7),
+        0x60 => bit(cpu, memory, B, 0),
+        0x61 => bit(cpu, memory, C, 1),
+        0x62 => bit(cpu, memory, D, 2),
+        0x63 => bit(cpu, memory, E, 3),
+        0x64 => bit(cpu, memory, H, 4),
+        0x65 => bit(cpu, memory, L, 5),
+        0x66 => bit(cpu, memory, AddrHL, 6),
+        0x67 => bit(cpu, memory, A, 7),
+        0x68 => bit(cpu, memory, B, 0),
+        0x69 => bit(cpu, memory, C, 1),
+        0x6A => bit(cpu, memory, D, 2),
+        0x6B => bit(cpu, memory, E, 3),
+        0x6C => bit(cpu, memory, H, 4),
+        0x6D => bit(cpu, memory, L, 5),
+        0x6E => bit(cpu, memory, AddrHL, 6),
+        0x6F => bit(cpu, memory, A, 7),
+        0x70 => bit(cpu, memory, B, 0),
+        0x71 => bit(cpu, memory, C, 1),
+        0x72 => bit(cpu, memory, D, 2),
+        0x73 => bit(cpu, memory, E, 3),
+        0x74 => bit(cpu, memory, H, 4),
+        0x75 => bit(cpu, memory, L, 5),
+        0x76 => bit(cpu, memory, AddrHL, 6),
+        0x77 => bit(cpu, memory, A, 7),
+        0x78 => bit(cpu, memory, B, 0),
+        0x79 => bit(cpu, memory, C, 1),
+        0x7A => bit(cpu, memory, D, 2),
+        0x7B => bit(cpu, memory, E, 3),
+        0x7C => bit(cpu, memory, H, 4),
+        0x7D => bit(cpu, memory, L, 5),
+        0x7E => bit(cpu, memory, AddrHL, 6),
+        0x7F => bit(cpu, memory, A, 7),
+        0x80 => res(cpu, memory, B, 0),
+        0x81 => res(cpu, memory, C, 1),
+        0x82 => res(cpu, memory, D, 2),
+        0x83 => res(cpu, memory, E, 3),
+        0x84 => res(cpu, memory, H, 4),
+        0x85 => res(cpu, memory, L, 5),
+        0x86 => res(cpu, memory, AddrHL, 6),
+        0x87 => res(cpu, memory, A, 7),
+        0x88 => res(cpu, memory, B, 0),
+        0x89 => res(cpu, memory, C, 1),
+        0x8A => res(cpu, memory, D, 2),
+        0x8B => res(cpu, memory, E, 3),
+        0x8C => res(cpu, memory, H, 4),
+        0x8D => res(cpu, memory, L, 5),
+        0x8E => res(cpu, memory, AddrHL, 6),
+        0x8F => res(cpu, memory, A, 7),
+        0x90 => res(cpu, memory, B, 0),
+        0x91 => res(cpu, memory, C, 1),
+        0x92 => res(cpu, memory, D, 2),
+        0x93 => res(cpu, memory, E, 3),
+        0x94 => res(cpu, memory, H, 4),
+        0x95 => res(cpu, memory, L, 5),
+        0x96 => res(cpu, memory, AddrHL, 6),
+        0x97 => res(cpu, memory, A, 7),
+        0x98 => res(cpu, memory, B, 0),
+        0x99 => res(cpu, memory, C, 1),
+        0x9A => res(cpu, memory, D, 2),
+        0x9B => res(cpu, memory, E, 3),
+        0x9C => res(cpu, memory, H, 4),
+        0x9D => res(cpu, memory, L, 5),
+        0x9E => res(cpu, memory, AddrHL, 6),
+        0x9F => res(cpu, memory, A, 7),
+        0xA0 => res(cpu, memory, B, 0),
+        0xA1 => res(cpu, memory, C, 1),
+        0xA2 => res(cpu, memory, D, 2),
+        0xA3 => res(cpu, memory, E, 3),
+        0xA4 => res(cpu, memory, H, 4),
+        0xA5 => res(cpu, memory, L, 5),
+        0xA6 => res(cpu, memory, AddrHL, 6),
+        0xA7 => res(cpu, memory, A, 7),
+        0xA8 => res(cpu, memory, B, 0),
+        0xA9 => res(cpu, memory, C, 1),
+        0xAA => res(cpu, memory, D, 2),
+        0xAB => res(cpu, memory, E, 3),
+        0xAC => res(cpu, memory, H, 4),
+        0xAD => res(cpu, memory, L, 5),
+        0xAE => res(cpu, memory, AddrHL, 6),
+        0xAF => res(cpu, memory, A, 7),
+        0xB0 => res(cpu, memory, B, 0),
+        0xB1 => res(cpu, memory, C, 1),
+        0xB2 => res(cpu, memory, D, 2),
+        0xB3 => res(cpu, memory, E, 3),
+        0xB4 => res(cpu, memory, H, 4),
+        0xB5 => res(cpu, memory, L, 5),
+        0xB6 => res(cpu, memory, AddrHL, 6),
+        0xB7 => res(cpu, memory, A, 7),
+        0xB8 => res(cpu, memory, B, 0),
+        0xB9 => res(cpu, memory, C, 1),
+        0xBA => res(cpu, memory, D, 2),
+        0xBB => res(cpu, memory, E, 3),
+        0xBC => res(cpu, memory, H, 4),
+        0xBD => res(cpu, memory, L, 5),
+        0xBE => res(cpu, memory, AddrHL, 6),
+        0xBF => res(cpu, memory, A, 7),
+        0xC0 => set(cpu, memory, B, 0),
+        0xC1 => set(cpu, memory, C, 1),
+        0xC2 => set(cpu, memory, D, 2),
+        0xC3 => set(cpu, memory, E, 3),
+        0xC4 => set(cpu, memory, H, 4),
+        0xC5 => set(cpu, memory, L, 5),
+        0xC6 => set(cpu, memory, AddrHL, 6),
+        0xC7 => set(cpu, memory, A, 7),
+        0xC8 => set(cpu, memory, B, 0),
+        0xC9 => set(cpu, memory, C, 1),
+        0xCA => set(cpu, memory, D, 2),
+        0xCB => set(cpu, memory, E, 3),
+        0xCC => set(cpu, memory, H, 4),
+        0xCD => set(cpu, memory, L, 5),
+        0xCE => set(cpu, memory, AddrHL, 6),
+        0xCF => set(cpu, memory, A, 7),
+        0xD0 => set(cpu, memory, B, 0),
+        0xD1 => set(cpu, memory, C, 1),
+        0xD2 => set(cpu, memory, D, 2),
+        0xD3 => set(cpu, memory, E, 3),
+        0xD4 => set(cpu, memory, H, 4),
+        0xD5 => set(cpu, memory, L, 5),
+        0xD6 => set(cpu, memory, AddrHL, 6),
+        0xD7 => set(cpu, memory, A, 7),
+        0xD8 => set(cpu, memory, B, 0),
+        0xD9 => set(cpu, memory, C, 1),
+        0xDA => set(cpu, memory, D, 2),
+        0xDB => set(cpu, memory, E, 3),
+        0xDC => set(cpu, memory, H, 4),
+        0xDD => set(cpu, memory, L, 5),
+        0xDE => set(cpu, memory, AddrHL, 6),
+        0xDF => set(cpu, memory, A, 7),
+        0xE0 => set(cpu, memory, B, 0),
+        0xE1 => set(cpu, memory, C, 1),
+        0xE2 => set(cpu, memory, D, 2),
+        0xE3 => set(cpu, memory, E, 3),
+        0xE4 => set(cpu, memory, H, 4),
+        0xE5 => set(cpu, memory, L, 5),
+        0xE6 => set(cpu, memory, AddrHL, 6),
+        0xE7 => set(cpu, memory, A, 7),
+        0xE8 => set(cpu, memory, B, 0),
+        0xE9 => set(cpu, memory, C, 1),
+        0xEA => set(cpu, memory, D, 2),
+        0xEB => set(cpu, memory, E, 3),
+        0xEC => set(cpu, memory, H, 4),
+        0xED => set(cpu, memory, L, 5),
+        0xEE => set(cpu, memory, AddrHL, 6),
+        0xEF => set(cpu, memory, A, 7),
+        0xF0 => set(cpu, memory, B, 0),
+        0xF1 => set(cpu, memory, C, 1),
+        0xF2 => set(cpu, memory, D, 2),
+        0xF3 => set(cpu, memory, E, 3),
+        0xF4 => set(cpu, memory, H, 4),
+        0xF5 => set(cpu, memory, L, 5),
+        0xF6 => set(cpu, memory, AddrHL, 6),
+        0xF7 => set(cpu, memory, A, 7),
+        0xF8 => set(cpu, memory, B, 0),
+        0xF9 => set(cpu, memory, C, 1),
+        0xFA => set(cpu, memory, D, 2),
+        0xFB => set(cpu, memory, E, 3),
+        0xFC => set(cpu, memory, H, 4),
+        0xFD => set(cpu, memory, L, 5),
+        0xFE => set(cpu, memory, AddrHL, 6),
+        0xFF => set(cpu, memory, A, 7),
         0x87 => {
             debug("RES 0, A");
             cpu.registers.a = bits::reset(cpu.registers.a, 0);
@@ -703,22 +904,37 @@ fn ccf(cpu: &mut CPU) {
     cpu.registers.f.carry = !cpu.registers.f.carry;
 }
 
-fn shift_left(cpu: &mut CPU, value: u8) -> u8 {
+fn sla(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
+    let value = loc.read(cpu, memory);
     let result = value << 1;
+
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.subtract = false;
     cpu.registers.f.half_carry = false;
     cpu.registers.f.carry = bits::to_bool(value & 0x80);
-    result
+    loc.write(cpu, memory, result);
 }
 
-fn shift_right(cpu: &mut CPU, value: u8) -> u8 {
+fn sra(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
+    let value = loc.read(cpu, memory);
     let result = value >> 1;
+
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.subtract = false;
     cpu.registers.f.half_carry = false;
     cpu.registers.f.carry = bits::to_bool(value & 0x1);
-    result
+    loc.write(cpu, memory, result);
+}
+
+fn srl(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
+    let value = loc.read(cpu, memory);
+    let result = value >> 1;
+
+    cpu.registers.f.zero = result == 0;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = bits::to_bool(value & 0x1);
+    loc.write(cpu, memory, result);
 }
 
 fn rrc(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
@@ -767,14 +983,27 @@ fn rl(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
     loc.write(cpu, memory, result);
 }
 
-fn test_bit(cpu: &mut CPU, value: u8, index: u8) {
+fn bit(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8, index: u8) {
+    let value = loc.read(cpu, memory);
     let result = value & (1 << index);
+
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.subtract = false;
     cpu.registers.f.half_carry = true;
 }
 
-fn swap(cpu: &mut CPU, value: u8) -> u8 {
+fn res(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8, index: u8) {
+    let value = loc.read(cpu, memory);
+    loc.write(cpu, memory, bits::reset(value, index));
+}
+
+fn set(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8, index: u8) {
+    let value = loc.read(cpu, memory);
+    loc.write(cpu, memory, bits::set(value, index));
+}
+
+fn swap(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
+    let value = loc.read(cpu, memory);
     let high_nibble = (value & 0xF0) >> 4;
     let low_nibble = (value & 0x0F) << 4;
     let result = low_nibble | high_nibble;
@@ -783,8 +1012,7 @@ fn swap(cpu: &mut CPU, value: u8) -> u8 {
     cpu.registers.f.subtract = false;
     cpu.registers.f.half_carry = false;
     cpu.registers.f.carry = false;
-
-    result
+    loc.write(cpu, memory, value);
 }
 
 fn ldi(cpu: &mut CPU, memory: &mut MemoryBus, dest: Loc8, src: Loc8) {
