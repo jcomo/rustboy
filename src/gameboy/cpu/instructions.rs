@@ -744,7 +744,6 @@ fn add_16(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc16) {
 }
 
 fn add_sp(cpu: &mut CPU, memory: &mut MemoryBus, dest: Loc16, src: Loc8) {
-    // TODO: go over this implementation
     let sp = cpu.registers.sp;
     let byte = src.read(cpu, memory);
 
@@ -823,16 +822,18 @@ fn daa(cpu: &mut CPU, memory: &mut MemoryBus) {
     let n = cpu.registers.f.subtract;
     let c = cpu.registers.f.carry;
     let h = cpu.registers.f.half_carry;
+
+    let value = cpu.registers.a;
     let mut result = cpu.registers.a;
+    let mut carry = c;
 
     if !n {
-        if h || (result & 0x0F) > 0x09 {
-            result = result.wrapping_add(0x06);
-        }
-
-        if c || result > 0x9F {
+        if c || value > 0x99 {
             result = result.wrapping_add(0x60);
-            cpu.registers.f.carry = true;
+            carry = true;
+        }
+        if h || (value & 0x0F) > 0x09 {
+            result = result.wrapping_add(0x06);
         }
     } else {
         if h {
@@ -846,6 +847,7 @@ fn daa(cpu: &mut CPU, memory: &mut MemoryBus) {
 
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = carry;
     cpu.registers.a = result;
 }
 
