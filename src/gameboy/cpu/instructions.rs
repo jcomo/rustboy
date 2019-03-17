@@ -164,7 +164,7 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x0C => inc_8(cpu, memory, C),
         0x0D => dec_8(cpu, memory, C),
         0x0E => load_8(cpu, memory, C, Imm8),
-        0x0F => rrc(cpu, memory, A),
+        0x0F => rrca(cpu, memory),
         0x11 => load_16(cpu, memory, DE, Imm16),
         0x12 => load_8(cpu, memory, AddrDE, A),
         0x13 => inc_16(cpu, memory, DE),
@@ -179,7 +179,7 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x1C => inc_8(cpu, memory, E),
         0x1D => dec_8(cpu, memory, E),
         0x1E => load_8(cpu, memory, E, Imm8),
-        0x1F => rr(cpu, memory, A),
+        0x1F => rra(cpu, memory),
         0x20 => jr_n(cpu, memory, Check::NZ),
         0x21 => load_16(cpu, memory, HL, Imm16),
         0x22 => ldi(cpu, memory, AddrHL, A),
@@ -928,6 +928,29 @@ fn srl(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
     cpu.registers.f.half_carry = false;
     cpu.registers.f.carry = bits::to_bool(value & 0x1);
     loc.write(cpu, memory, result);
+}
+
+fn rrca(cpu: &mut CPU, memory: &mut MemoryBus) {
+    let value = cpu.registers.a;
+    let result = value.rotate_right(1);
+
+    cpu.registers.f.zero = false;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = bits::to_bool(value & 0x1);
+    cpu.registers.a = result;
+}
+
+fn rra(cpu: &mut CPU, memory: &mut MemoryBus) {
+    let value = cpu.registers.a;
+    let carry = bits::from_bool(cpu.registers.f.carry);
+    let result = (carry << 7) | (value >> 1);
+
+    cpu.registers.f.zero = false;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = bits::to_bool(value & 0x1);
+    cpu.registers.a = result;
 }
 
 fn rrc(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
