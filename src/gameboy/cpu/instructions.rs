@@ -817,7 +817,7 @@ fn cp(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
     cpu.registers.f.carry = right > left;
 }
 
-// See: http://gbdev.gg8.se/wiki/articles/DAA
+// See: http://gbdev.gg8.se/wiki/articles/DAA or page 122 in the "Game Boy Programming Manual"
 fn daa(cpu: &mut CPU, memory: &mut MemoryBus) {
     let n = cpu.registers.f.subtract;
     let c = cpu.registers.f.carry;
