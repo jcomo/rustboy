@@ -904,7 +904,7 @@ fn sla(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.subtract = false;
     cpu.registers.f.half_carry = false;
-    cpu.registers.f.carry = bits::to_bool(value & 0x80);
+    cpu.registers.f.carry = bits::to_bool(value >> 7);
     loc.write(cpu, memory, result);
 }
 
