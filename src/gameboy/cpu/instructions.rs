@@ -1043,15 +1043,13 @@ fn set(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8, index: u8) {
 
 fn swap(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
     let value = loc.read(cpu, memory);
-    let high_nibble = (value & 0xF0) >> 4;
-    let low_nibble = (value & 0x0F) << 4;
-    let result = low_nibble | high_nibble;
+    let result = (value << 4) | (value >> 4);
 
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.subtract = false;
     cpu.registers.f.half_carry = false;
     cpu.registers.f.carry = false;
-    loc.write(cpu, memory, value);
+    loc.write(cpu, memory, result);
 }
 
 fn ldi(cpu: &mut CPU, memory: &mut MemoryBus, dest: Loc8, src: Loc8) {
