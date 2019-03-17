@@ -1,4 +1,5 @@
 /target
 **/*.rs.bk
 
-roms/tetris.gb
+/roms/tetris.gb
+/roms/dr-mario.gb
