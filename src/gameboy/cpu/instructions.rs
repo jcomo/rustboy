@@ -910,7 +910,7 @@ fn sla(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
 
 fn sra(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
     let value = loc.read(cpu, memory);
-    let result = value >> 1;
+    let result = (value & 0x80) | value >> 1;
 
     cpu.registers.f.zero = result == 0;
     cpu.registers.f.subtract = false;
