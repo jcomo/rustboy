@@ -156,7 +156,7 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x04 => inc_8(cpu, memory, B),
         0x05 => dec_8(cpu, memory, B),
         0x06 => load_8(cpu, memory, B, Imm8),
-        0x07 => rlc(cpu, memory, A),
+        0x07 => rlca(cpu, memory),
         0x08 => load_16(cpu, memory, Imm16, SP),
         0x09 => add_16(cpu, memory, BC),
         0x0A => load_8(cpu, memory, A, AddrBC),
@@ -171,7 +171,7 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x14 => inc_8(cpu, memory, D),
         0x15 => dec_8(cpu, memory, D),
         0x16 => load_8(cpu, memory, D, Imm8),
-        0x17 => rl(cpu, memory, A),
+        0x17 => rla(cpu, memory),
         0x18 => jr_n(cpu, memory, Check::True),
         0x19 => add_16(cpu, memory, DE),
         0x1A => load_8(cpu, memory, A, AddrDE),
@@ -661,10 +661,6 @@ fn execute_extended(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0xFD => set(cpu, memory, L, 5),
         0xFE => set(cpu, memory, AddrHL, 6),
         0xFF => set(cpu, memory, A, 7),
-        0x87 => {
-            debug("RES 0, A");
-            cpu.registers.a = bits::reset(cpu.registers.a, 0);
-        }
         _ => {
             println!("{:?}", cpu.registers);
             panic!(format!("Unknown operation 0xCB{:X}", op));
@@ -890,12 +886,9 @@ fn xor(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
 }
 
 fn cpl(cpu: &mut CPU) {
-    let value = cpu.registers.a;
-    let result = value ^ 0xFF;
-
+    cpu.registers.a = !cpu.registers.a;
     cpu.registers.f.subtract = true;
     cpu.registers.f.half_carry = true;
-    cpu.registers.a = result;
 }
 
 fn ccf(cpu: &mut CPU) {
@@ -958,6 +951,29 @@ fn rr(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
     cpu.registers.f.half_carry = false;
     cpu.registers.f.carry = bits::to_bool(value & 0x1);
     loc.write(cpu, memory, result);
+}
+
+fn rlca(cpu: &mut CPU, memory: &mut MemoryBus) {
+    let value = cpu.registers.a;
+    let result = value.rotate_left(1);
+
+    cpu.registers.f.zero = false;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = bits::to_bool(value >> 7);
+    cpu.registers.a = result;
+}
+
+fn rla(cpu: &mut CPU, memory: &mut MemoryBus) {
+    let value = cpu.registers.a;
+    let carry = bits::from_bool(cpu.registers.f.carry);
+    let result = (value << 1) | carry;
+
+    cpu.registers.f.zero = false;
+    cpu.registers.f.subtract = false;
+    cpu.registers.f.half_carry = false;
+    cpu.registers.f.carry = bits::to_bool(value >> 7);
+    cpu.registers.a = result;
 }
 
 fn rlc(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
