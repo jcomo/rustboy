@@ -594,7 +594,67 @@ impl GPU {
         }
     }
 
-    fn draw_sprites(&mut self) {}
+    fn draw_sprites(&mut self) {
+        let y_size: u8 = if self.control.obj_size { 16 } else { 8 };
+
+        for &sprite in self.sprites.iter() {
+            if !self.should_draw_sprite(&sprite, y_size) {
+                continue;
+            }
+
+            let palette = if sprite.flags.palette {
+                &self.obj_palette_1
+            } else {
+                &self.obj_palette_0
+            };
+
+            let sprite_y = self.current_line.wrapping_sub(sprite.get_y());
+            let mut y_pos = if sprite.flags.flip_y {
+                y_size - sprite_y - 1
+            } else {
+                sprite_y
+            };
+
+            let mut tile_num = sprite.tile_num;
+            if y_pos >= 8 {
+                // Go to the next tile, and normalize the y pos
+                tile_num += 1;
+                y_pos -= 8;
+            }
+
+            // Sprite tiles start at 0x8000, which is where tile_data is based
+            let tile = self.tile_data[tile_num as usize];
+            for x_offset in 0..8 {
+                let x_pos = if sprite.flags.flip_x {
+                    7 - x_offset
+                } else {
+                    x_offset
+                };
+
+                let color = tile.get_color(y_pos, x_pos);
+                if color == Color::White {
+                    // White is transparent for sprite drawing
+                    continue;
+                }
+
+                let col = sprite.get_x() + x_offset;
+                if col >= V_SCANLINE_MAX {
+                    // Don't draw sprites off screen
+                    continue;
+                }
+
+                let color = palette.map(color);
+                self.display.set_pixel(col, self.current_line, color);
+            }
+        }
+    }
+
+    /// Sprites should only be drawn when they intersect with the scanline
+    fn should_draw_sprite(&self, sprite: &Sprite, y_size: u8) -> bool {
+        let y_pos = sprite.get_y();
+        let line = self.current_line;
+        return y_pos <= line && line < (y_pos + y_size);
+    }
 
     /// Given a tile row and col, returns the tile via the proper semantics
     /// by doing a lookup for the number and then the data using LCDC register
