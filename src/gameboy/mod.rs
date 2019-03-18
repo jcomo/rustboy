@@ -10,7 +10,7 @@ use self::cpu::CPU;
 use self::memory::MMU;
 
 #[derive(Hash, Eq, PartialEq)]
-enum Button {
+pub enum Button {
     A,
     B,
     Start,

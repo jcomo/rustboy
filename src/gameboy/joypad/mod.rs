@@ -40,11 +40,11 @@ impl Joypad {
     }
 
     pub fn get_data(&self) -> u8 {
-        let mut bytes: u8 = 0b0011_0000 & self.data;
+        let mut bytes: u8 = self.mask();
 
         for btn in self.buttons.iter() {
             if self.is_active(&btn) {
-                bytes |= btn.mask();
+                bytes &= !btn.mask();
             }
         }
 
@@ -52,14 +52,10 @@ impl Joypad {
     }
 
     pub fn set_data(&mut self, byte: u8) {
-        self.data = byte;
+        self.data = byte & 0b0011_0000;
     }
 
     pub fn button_down(&mut self, irq: &mut IRQ, btn: Button) {
-        if !self.is_active(&btn) {
-            return;
-        }
-
         if !self.buttons.contains(&btn) {
             // Newly pressed
             irq.set_interrupt(&Interrupt::Joypad);
@@ -73,7 +69,11 @@ impl Joypad {
     }
 
     fn is_active(&self, btn: &Button) -> bool {
-        self.data & btn.control_mask() > 0
+        self.mask() & btn.control_mask() == 0
+    }
+
+    fn mask(&self) -> u8 {
+        0b1100_1111 | self.data
     }
 }
 
@@ -84,7 +84,7 @@ mod test {
     impl Joypad {
         fn test() -> Joypad {
             let mut joypad = Joypad::new();
-            joypad.set_data(Button::A.control_mask());
+            joypad.set_data(!Button::A.control_mask());
             joypad
         }
     }
@@ -94,17 +94,17 @@ mod test {
         let mut joypad = Joypad::test();
         let mut irq = IRQ::enabled();
 
-        joypad.set_data(Button::A.control_mask());
+        joypad.set_data(!Button::A.control_mask());
         joypad.button_down(&mut irq, Button::A);
         joypad.button_down(&mut irq, Button::B);
 
-        assert_eq!(joypad.get_data(), 0b0010_0011);
+        assert_eq!(joypad.get_data(), 0b1101_1100);
 
-        joypad.set_data(Button::Up.control_mask());
+        joypad.set_data(!Button::Up.control_mask());
         joypad.button_down(&mut irq, Button::Up);
         joypad.button_down(&mut irq, Button::Down);
 
-        assert_eq!(joypad.get_data(), 0b0001_1100);
+        assert_eq!(joypad.get_data(), 0b1110_0011);
     }
 
     #[test]
@@ -120,23 +120,14 @@ mod test {
     }
 
     #[test]
-    fn test_button_down_inactive() {
-        let mut joypad = Joypad::test();
-        let mut irq = IRQ::enabled();
-
-        joypad.button_down(&mut irq, Button::Down);
-        assert_eq!(irq.ack_interrupt(), None);
-    }
-
-    #[test]
     fn test_button_up() {
         let mut joypad = Joypad::test();
         let mut irq = IRQ::enabled();
 
         joypad.button_down(&mut irq, Button::A);
-        assert_eq!(joypad.get_data(), 0b0010_0001);
+        assert_eq!(joypad.get_data(), 0b1101_1110);
 
         joypad.button_up(Button::A);
-        assert_eq!(joypad.get_data(), 0b0010_0000);
+        assert_eq!(joypad.get_data(), 0b1101_1111);
     }
 }

@@ -11,26 +11,101 @@ use sdl2::rect::Rect;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::EventPump;
+use sdl2::Sdl;
 
+use crate::gameboy::Button;
 use crate::gameboy::Color;
+use crate::gameboy::GameBoy;
 use crate::gameboy::VideoDisplay;
 
 const SCREEN_WIDTH: u32 = 160;
 const SCREEN_HEIGHT: u32 = 144;
 
-pub struct SDLDisplay {
-    scale: u32,
-    canvas: Canvas<Window>,
+pub struct SDLFrontend {}
+
+impl SDLFrontend {
+    pub fn run(cartridge: &Vec<u8>, display_scale: u32) {
+        let sdl_context = sdl2::init().unwrap();
+        let display = SDLDisplay::new(display_scale, &sdl_context);
+        let mut gameboy = GameBoy::new(&cartridge, Box::new(display));
+
+        let mut controller = SDLController::new(&sdl_context);
+        controller.process_input(&mut gameboy);
+
+        // TODO: Fix this crazy hack; should use a clock and real cycles
+        let mut cycles = 0;
+
+        loop {
+            if cycles >= 1000 {
+                controller.process_input(&mut gameboy);
+                cycles = 0;
+            }
+
+            gameboy.step();
+            cycles += 1;
+        }
+    }
+}
+
+struct SDLController {
     event_pump: EventPump,
 }
 
-impl SDLDisplay {
-    pub fn new(scale: u32) -> SDLDisplay {
-        let sdl_context = sdl2::init().unwrap();
-        let video_subsystem = sdl_context.video().unwrap();
+impl SDLController {
+    fn new(sdl_context: &Sdl) -> SDLController {
+        let event_pump = sdl_context.event_pump().unwrap();
+        SDLController { event_pump }
+    }
 
+    fn process_input(&mut self, gameboy: &mut GameBoy) {
+        for event in self.event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. } => process::exit(0),
+                Event::KeyDown {
+                    keycode: Some(key), ..
+                } => {
+                    SDLController::key_to_button(key).map(|btn| {
+                        gameboy.button_down(btn);
+                    });
+                }
+                Event::KeyUp {
+                    keycode: Some(key), ..
+                } => {
+                    SDLController::key_to_button(key).map(|btn| {
+                        gameboy.button_up(btn);
+                    });
+                }
+                _ => println!("{:?}", event),
+            }
+        }
+    }
+
+    fn key_to_button(key: Keycode) -> Option<Button> {
+        match key {
+            Keycode::W => Some(Button::Up),
+            Keycode::A => Some(Button::Left),
+            Keycode::S => Some(Button::Down),
+            Keycode::D => Some(Button::Right),
+            Keycode::X => Some(Button::Start),
+            Keycode::Z => Some(Button::Select),
+            Keycode::O => Some(Button::A),
+            Keycode::J => Some(Button::B),
+            _ => None,
+        }
+    }
+}
+
+struct SDLDisplay {
+    scale: u32,
+    canvas: Canvas<Window>,
+}
+
+impl SDLDisplay {
+    fn new(scale: u32, sdl_context: &Sdl) -> SDLDisplay {
         let width = SCREEN_WIDTH * scale;
         let height = SCREEN_HEIGHT * scale;
+
+        let video_subsystem = sdl_context.video().unwrap();
         let window = video_subsystem
             .window("RustBoy", width, height)
             .position_centered()
@@ -38,12 +113,10 @@ impl SDLDisplay {
             .unwrap();
 
         let canvas = window.into_canvas().build().unwrap();
-        let event_pump = sdl_context.event_pump().unwrap();
 
         SDLDisplay {
             scale: scale,
             canvas: canvas,
-            event_pump: event_pump,
         }
     }
 }
@@ -67,11 +140,5 @@ impl VideoDisplay for SDLDisplay {
 
     fn vsync(&mut self) {
         self.canvas.present();
-        for event in self.event_pump.poll_iter() {
-            match event {
-                Event::Quit { .. } => process::exit(0),
-                _ => println!("{:?}", event),
-            }
-        }
     }
 }
