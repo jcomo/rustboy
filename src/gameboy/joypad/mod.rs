@@ -40,7 +40,7 @@ impl Joypad {
     }
 
     pub fn get_data(&self) -> u8 {
-        let mut bytes: u8 = 0;
+        let mut bytes: u8 = 0b0011_0000 & self.data;
 
         for btn in self.buttons.iter() {
             if self.is_active(&btn) {
@@ -74,5 +74,69 @@ impl Joypad {
 
     fn is_active(&self, btn: &Button) -> bool {
         self.data & btn.control_mask() > 0
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    impl Joypad {
+        fn test() -> Joypad {
+            let mut joypad = Joypad::new();
+            joypad.set_data(Button::A.control_mask());
+            joypad
+        }
+    }
+
+    #[test]
+    fn test_button_down() {
+        let mut joypad = Joypad::test();
+        let mut irq = IRQ::enabled();
+
+        joypad.set_data(Button::A.control_mask());
+        joypad.button_down(&mut irq, Button::A);
+        joypad.button_down(&mut irq, Button::B);
+
+        assert_eq!(joypad.get_data(), 0b0010_0011);
+
+        joypad.set_data(Button::Up.control_mask());
+        joypad.button_down(&mut irq, Button::Up);
+        joypad.button_down(&mut irq, Button::Down);
+
+        assert_eq!(joypad.get_data(), 0b0001_1100);
+    }
+
+    #[test]
+    fn test_button_down_int() {
+        let mut joypad = Joypad::test();
+        let mut irq = IRQ::enabled();
+
+        joypad.button_down(&mut irq, Button::B);
+        assert_eq!(irq.ack_interrupt(), Some(Interrupt::Joypad.get_addr()));
+
+        joypad.button_down(&mut irq, Button::B);
+        assert_eq!(irq.ack_interrupt(), None);
+    }
+
+    #[test]
+    fn test_button_down_inactive() {
+        let mut joypad = Joypad::test();
+        let mut irq = IRQ::enabled();
+
+        joypad.button_down(&mut irq, Button::Down);
+        assert_eq!(irq.ack_interrupt(), None);
+    }
+
+    #[test]
+    fn test_button_up() {
+        let mut joypad = Joypad::test();
+        let mut irq = IRQ::enabled();
+
+        joypad.button_down(&mut irq, Button::A);
+        assert_eq!(joypad.get_data(), 0b0010_0001);
+
+        joypad.button_up(Button::A);
+        assert_eq!(joypad.get_data(), 0b0010_0000);
     }
 }
