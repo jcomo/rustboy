@@ -2,7 +2,7 @@ mod bits;
 mod display;
 mod gameboy;
 
-use crate::display::SDLDisplay;
+use crate::display::SDLFrontend;
 use crate::gameboy::GameBoy;
 use crate::gameboy::NoDisplay;
 
@@ -23,11 +23,6 @@ fn main() {
         process::exit(1);
     });
 
-    let mut display = Box::new(SDLDisplay::new(2));
-    let mut gameboy = GameBoy::new(&data, display);
-
     println!("[start] RustBoy");
-    loop {
-        gameboy.step();
-    }
+    SDLFrontend::run(&data, 2);
 }

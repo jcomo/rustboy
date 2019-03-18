@@ -1,3 +1,3 @@
 mod sdl;
 
-pub use self::sdl::SDLDisplay;
+pub use self::sdl::SDLFrontend;

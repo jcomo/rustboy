@@ -9,6 +9,18 @@ mod timer;
 use self::cpu::CPU;
 use self::memory::MMU;
 
+#[derive(Hash, Eq, PartialEq)]
+pub enum Button {
+    A,
+    B,
+    Start,
+    Select,
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Color {
     White = 0b00,
@@ -53,5 +65,13 @@ impl GameBoy {
 
     pub fn step(&mut self) {
         self.cpu.step(&mut self.mmu);
+    }
+
+    pub fn button_down(&mut self, btn: Button) {
+        self.mmu.button_down(btn);
+    }
+
+    pub fn button_up(&mut self, btn: Button) {
+        self.mmu.button_up(btn);
     }
 }

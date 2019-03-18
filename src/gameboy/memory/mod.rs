@@ -9,6 +9,7 @@ use crate::gameboy::irq::IRQ;
 use crate::gameboy::joypad::Joypad;
 use crate::gameboy::serial::Serial;
 use crate::gameboy::timer::Timer;
+use crate::gameboy::Button;
 use crate::gameboy::VideoDisplay;
 
 const EMPTY_READ: u8 = 0xFF;
@@ -43,6 +44,14 @@ impl MMU {
             serial: Serial::new(),
             dma: DMA::new(),
         }
+    }
+
+    pub fn button_down(&mut self, btn: Button) {
+        self.joypad.button_down(&mut self.irq, btn);
+    }
+
+    pub fn button_up(&mut self, btn: Button) {
+        self.joypad.button_up(btn);
     }
 
     fn emulate(&mut self) {
