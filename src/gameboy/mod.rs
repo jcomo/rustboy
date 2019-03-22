@@ -1,3 +1,6 @@
+pub mod clock;
+pub mod display;
+
 mod cpu;
 mod gpu;
 mod irq;
@@ -6,7 +9,9 @@ mod memory;
 mod serial;
 mod timer;
 
+use self::clock::Clock;
 use self::cpu::CPU;
+use self::display::VideoDisplay;
 use self::memory::MMU;
 
 #[derive(Hash, Eq, PartialEq)]
@@ -29,42 +34,33 @@ pub enum Color {
     Black = 0b11,
 }
 
-pub trait VideoDisplay {
-    fn set_pixel(&mut self, x: u8, y: u8, color: Color);
-    fn vsync(&mut self);
-}
-
-pub struct NoDisplay {}
-
-impl NoDisplay {
-    pub fn new() -> NoDisplay {
-        NoDisplay {}
-    }
-}
-
-impl VideoDisplay for NoDisplay {
-    fn set_pixel(&mut self, x: u8, y: u8, color: Color) {}
-    fn vsync(&mut self) {}
-}
-
 pub struct GameBoy {
     cpu: CPU,
     mmu: MMU,
+    clock: Box<dyn Clock>,
 }
 
 impl GameBoy {
-    pub fn new(cartridge: &Vec<u8>, display: Box<dyn VideoDisplay>) -> GameBoy {
+    pub fn new(
+        cartridge: &Vec<u8>,
+        clock: Box<dyn Clock>,
+        display: Box<dyn VideoDisplay>,
+    ) -> GameBoy {
         // TODO: check for catridge too large?
         let rom = cartridge.to_owned();
 
         GameBoy {
             cpu: CPU::default(),
             mmu: MMU::new(rom, display),
+            clock,
         }
     }
 
-    pub fn step(&mut self) {
+    pub fn step(&mut self) -> u8 {
         self.cpu.step(&mut self.mmu);
+        let cycles = self.mmu.get_and_reset_cycles();
+        self.clock.tick(cycles);
+        cycles
     }
 
     pub fn button_down(&mut self, btn: Button) {

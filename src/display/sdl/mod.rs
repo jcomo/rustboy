@@ -1,8 +1,8 @@
 extern crate sdl2;
 
 use std::process;
-use std::thread::sleep;
 use std::time::Duration;
+use std::time::Instant;
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -13,10 +13,11 @@ use sdl2::video::Window;
 use sdl2::EventPump;
 use sdl2::Sdl;
 
+use crate::gameboy::clock::WallClock;
+use crate::gameboy::display::VideoDisplay;
 use crate::gameboy::Button;
 use crate::gameboy::Color;
 use crate::gameboy::GameBoy;
-use crate::gameboy::VideoDisplay;
 
 const SCREEN_WIDTH: u32 = 160;
 const SCREEN_HEIGHT: u32 = 144;
@@ -26,38 +27,50 @@ pub struct SDLFrontend {}
 impl SDLFrontend {
     pub fn run(cartridge: &Vec<u8>, display_scale: u32) {
         let sdl_context = sdl2::init().unwrap();
-        let display = SDLDisplay::new(display_scale, &sdl_context);
-        let mut gameboy = GameBoy::new(&cartridge, Box::new(display));
-
         let mut controller = SDLController::new(&sdl_context);
-        controller.process_input(&mut gameboy);
 
-        // TODO: Fix this crazy hack; should use a clock and real cycles
-        let mut cycles = 0;
+        let clock = WallClock::z80();
+        let display = SDLDisplay::new(display_scale, &sdl_context);
+        let mut gameboy = GameBoy::new(&cartridge, Box::new(clock), Box::new(display));
 
         loop {
-            if cycles >= 1000 {
-                controller.process_input(&mut gameboy);
-                cycles = 0;
-            }
-
+            controller.process_input(&mut gameboy);
             gameboy.step();
-            cycles += 1;
         }
     }
 }
 
 struct SDLController {
     event_pump: EventPump,
+    last_processed: Instant,
+    processing_delay: Duration,
 }
 
 impl SDLController {
     fn new(sdl_context: &Sdl) -> SDLController {
-        let event_pump = sdl_context.event_pump().unwrap();
-        SDLController { event_pump }
+        SDLController {
+            event_pump: sdl_context.event_pump().unwrap(),
+            last_processed: Instant::now(),
+            processing_delay: Duration::from_millis(3),
+        }
     }
 
     fn process_input(&mut self, gameboy: &mut GameBoy) {
+        if self.ready_to_process() {
+            self.pump_events(gameboy);
+            self.reset();
+        }
+    }
+
+    fn ready_to_process(&self) -> bool {
+        self.last_processed.elapsed() > self.processing_delay
+    }
+
+    fn reset(&mut self) {
+        self.last_processed = Instant::now();
+    }
+
+    fn pump_events(&mut self, gameboy: &mut GameBoy) {
         for event in self.event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => process::exit(0),
@@ -75,7 +88,7 @@ impl SDLController {
                         gameboy.button_up(btn);
                     });
                 }
-                _ => println!("{:?}", event),
+                _ => (),
             }
         }
     }

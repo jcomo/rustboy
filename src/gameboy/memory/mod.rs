@@ -4,17 +4,18 @@ mod dma;
 use self::boot::DMG_BIN;
 use self::dma::DMA;
 use crate::gameboy::cpu::MemoryBus;
+use crate::gameboy::display::VideoDisplay;
 use crate::gameboy::gpu::GPU;
 use crate::gameboy::irq::IRQ;
 use crate::gameboy::joypad::Joypad;
 use crate::gameboy::serial::Serial;
 use crate::gameboy::timer::Timer;
 use crate::gameboy::Button;
-use crate::gameboy::VideoDisplay;
 
 const EMPTY_READ: u8 = 0xFF;
 
 pub struct MMU {
+    elapsed_cycles: u8,
     is_checking_boot_rom: bool,
     boot_rom: [u8; 0x100],
     ram: [u8; 0x10_000],
@@ -28,12 +29,13 @@ pub struct MMU {
 
 impl MMU {
     pub fn new(rom: Vec<u8>, display: Box<dyn VideoDisplay>) -> MMU {
-        let mut ram = [0; 0x10_000];
+        let mut ram = [0xFF; 0x10_000];
         for (i, byte) in rom.iter().enumerate() {
             ram[i] = byte.clone();
         }
 
         MMU {
+            elapsed_cycles: 0,
             is_checking_boot_rom: true,
             boot_rom: DMG_BIN,
             ram: ram,
@@ -54,7 +56,18 @@ impl MMU {
         self.joypad.button_up(btn);
     }
 
+    pub fn get_and_reset_cycles(&mut self) -> u8 {
+        let cycles = self.elapsed_cycles;
+        self.elapsed_cycles = 0;
+        cycles
+    }
+
+    fn tick_cycle(&mut self) {
+        self.elapsed_cycles = self.elapsed_cycles.wrapping_add(1);
+    }
+
     fn emulate(&mut self) {
+        self.tick_cycle();
         self.emulate_oam_dma();
         self.gpu.emulate(&mut self.irq);
         self.timer.emulate(&mut self.irq);

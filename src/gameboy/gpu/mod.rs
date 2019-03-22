@@ -1,9 +1,9 @@
 use crate::bits;
+use crate::gameboy::display::NoDisplay;
+use crate::gameboy::display::VideoDisplay;
 use crate::gameboy::irq::Interrupt;
 use crate::gameboy::irq::IRQ;
 use crate::gameboy::Color;
-use crate::gameboy::NoDisplay;
-use crate::gameboy::VideoDisplay;
 
 // LCDC CPU cycle lengths
 const OAM_CYCLES: i32 = 21;
