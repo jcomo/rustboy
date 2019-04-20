@@ -1,6 +1,7 @@
 pub mod clock;
 pub mod display;
 
+mod cartridge;
 mod cpu;
 mod gpu;
 mod irq;

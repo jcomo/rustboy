@@ -3,6 +3,7 @@ mod dma;
 
 use self::boot::DMG_BIN;
 use self::dma::DMA;
+use crate::gameboy::cartridge::Cartridge;
 use crate::gameboy::cpu::MemoryBus;
 use crate::gameboy::display::VideoDisplay;
 use crate::gameboy::gpu::GPU;
@@ -12,13 +13,18 @@ use crate::gameboy::serial::Serial;
 use crate::gameboy::timer::Timer;
 use crate::gameboy::Button;
 
+const BOOT_ROM_SIZE: usize = 0x100;
+const INTERNAL_RAM_SIZE: usize = 0x2000;
+const HIRAM_SIZE: usize = 0x7F;
 const EMPTY_READ: u8 = 0xFF;
 
 pub struct MMU {
     elapsed_cycles: u8,
     is_checking_boot_rom: bool,
-    boot_rom: [u8; 0x100],
-    ram: [u8; 0x10_000],
+    boot_rom: [u8; BOOT_ROM_SIZE],
+    internal_ram: [u8; INTERNAL_RAM_SIZE],
+    hiram: [u8; HIRAM_SIZE],
+    cartridge: Cartridge,
     gpu: GPU,
     irq: IRQ,
     timer: Timer,
@@ -29,16 +35,13 @@ pub struct MMU {
 
 impl MMU {
     pub fn new(rom: Vec<u8>, display: Box<dyn VideoDisplay>) -> MMU {
-        let mut ram = [0xFF; 0x10_000];
-        for (i, byte) in rom.iter().enumerate() {
-            ram[i] = byte.clone();
-        }
-
         MMU {
             elapsed_cycles: 0,
             is_checking_boot_rom: true,
             boot_rom: DMG_BIN,
-            ram: ram,
+            internal_ram: [0; INTERNAL_RAM_SIZE],
+            hiram: [0; HIRAM_SIZE],
+            cartridge: Cartridge::new(rom),
             gpu: GPU::new(display),
             irq: IRQ::new(),
             timer: Timer::new(),
@@ -83,16 +86,14 @@ impl MMU {
     fn get_byte_internal(&self, address: u16) -> u8 {
         let index = address as usize;
         match address >> 8 {
-            0x00 => {
-                if self.is_checking_boot_rom {
-                    self.boot_rom[index]
-                } else {
-                    self.ram[index]
-                }
-            }
+            0x00 if self.is_checking_boot_rom => self.boot_rom[index],
+            0x00...0x3F => self.cartridge.read_rom_bank0(address),
+            0x40...0x7F => self.cartridge.read_rom_bank1(address),
             0x80...0x97 => self.gpu.get_tile_row(address - 0x8000),
             0x98...0x9B => self.gpu.get_tile_map_0(address - 0x9800),
             0x9C...0x9F => self.gpu.get_tile_map_1(address - 0x9C00),
+            0xA0...0xBF => self.cartridge.read_ram(address),
+            0xC0...0xDF => self.internal_ram[index - 0xC000],
             0xFE => match address & 0xFF {
                 0x00...0x9F => self.gpu.read_oam(address as u8),
                 _ => EMPTY_READ,
@@ -122,24 +123,23 @@ impl MMU {
                 0x4A => self.gpu.get_window_y(),
                 0x4B => self.gpu.get_window_x(),
                 0x4C...0x7F => EMPTY_READ,
-                0x80...0xFE => self.ram[index],
+                0x80...0xFE => self.hiram[index - 0xFF80],
                 0xFF => self.irq.get_enabled_bits(),
                 _ => panic!("unsupported read 0x{:X}", address),
             },
-            _ => {
-                println!("(get_byte) ADDRESS: 0x{:x} (0x{:x})", address, address >> 8);
-                self.ram[index]
-            }
+            _ => unreachable!(),
         }
     }
 
     fn set_byte_internal(&mut self, address: u16, byte: u8) {
         let index = address as usize;
         match address >> 8 {
-            0x00 => self.boot_rom[index] = byte,
+            0x00...0x7F => self.cartridge.write_registers(address, byte),
             0x80...0x97 => self.gpu.set_tile_row(address - 0x8000, byte),
             0x98...0x9B => self.gpu.set_tile_map_0(address - 0x9800, byte),
             0x9C...0x9F => self.gpu.set_tile_map_1(address - 0x9C00, byte),
+            0xA0...0xBF => self.cartridge.write_ram(address, byte),
+            0xC0...0xDF => self.internal_ram[index - 0xC000] = byte,
             0xFE => match address & 0xFF {
                 0x00...0x9F => self.gpu.write_oam(address as u8, byte),
                 _ => (),
@@ -170,14 +170,11 @@ impl MMU {
                 0x4A => self.gpu.set_window_y(byte),
                 0x4B => self.gpu.set_window_x(byte),
                 0x4C...0x7F => (), // Empty
-                0x80...0xFE => self.ram[index] = byte,
+                0x80...0xFE => self.hiram[index - 0xFF80] = byte,
                 0xFF => self.irq.set_enabled_bits(byte),
                 _ => panic!("unsupported write 0x{:X} = {:X}", address, byte),
             },
-            _ => {
-                println!("(set_byte) ADDRESS: 0x{:x} = 0x{:x}", address, byte);
-                self.ram[index] = byte;
-            }
+            _ => unreachable!(),
         }
     }
 
