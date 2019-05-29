@@ -25,28 +25,29 @@ impl MBC1 {
         }
     }
 
-    fn get_rom_bank(&self) -> u16 {
+    fn get_rom_bank(&self) -> usize {
         let upper_bits = self.rom_bank_upper_bits & 0b11;
         let lower_bits = self.rom_bank_lower_bits & 0x1F;
-        ((upper_bits << 5) | lower_bits) as u16
+        ((upper_bits << 5) | lower_bits) as usize
     }
 
-    fn get_ram_bank(&self) -> u16 {
-        (self.ram_bank & 0b11) as u16
+    fn get_ram_bank(&self) -> usize {
+        (self.ram_bank & 0b11) as usize
     }
 }
 
 impl MBC for MBC1 {
     fn read_rom_bank1(&self, rom: &[u8], address: u16) -> u8 {
-        let relative_address = address - 0x4000;
-        let index = relative_address + (0x4000 * self.get_rom_bank());
-        rom[index as usize]
+        let relative_address = (address - 0x4000) as usize;
+        let offset = 0x4000 * self.get_rom_bank();
+        rom[relative_address + offset]
     }
 
     fn read_ram(&self, ram: &[u8], address: u16) -> u8 {
         if self.ram_enabled {
-            let index = address + (0x2000 * self.get_ram_bank());
-            ram[index as usize]
+            let offset = 0x2000 * self.get_ram_bank();
+            let index = (address as usize) + offset;
+            ram[index]
         } else {
             0xff
         }
@@ -81,8 +82,9 @@ impl MBC for MBC1 {
 
     fn write_ram(&mut self, ram: &mut [u8], address: u16, byte: u8) {
         if self.ram_enabled {
-            let index = address + (0x2000 * self.get_ram_bank());
-            ram[index as usize] = byte;
+            let offset = 0x2000 * self.get_ram_bank();
+            let index = (address as usize) + offset;
+            ram[index] = byte;
         }
     }
 }
@@ -125,6 +127,15 @@ mod test {
         mbc.rom_bank_lower_bits = 0x02;
 
         assert_eq!(2, mbc.read_rom_bank1(&rom, 0x4001));
+    }
+
+    #[test]
+    fn read_rom_bank1_overflow_u16() {
+        let mut mbc = MBC1::new();
+        let mut rom = [0; 0x1FFFF];
+
+        mbc.rom_bank_lower_bits = 0x05;
+        assert_eq!(0, mbc.read_rom_bank1(&rom, 0x4001));
     }
 
     #[test]
