@@ -587,7 +587,6 @@ impl GPU {
         let window_x = self.window_x.wrapping_sub(7);
 
         if self.current_line < window_y {
-            // Out of window drawing bounds
             return;
         }
 
@@ -596,7 +595,6 @@ impl GPU {
 
         for col in 0..V_SCANLINE_MAX {
             if col < window_x {
-                // Out of window drawing bounds
                 continue;
             }
 
@@ -668,7 +666,7 @@ impl GPU {
                     continue;
                 }
 
-                let col = sprite.get_x() + x_offset;
+                let col = sprite.get_x().wrapping_add(x_offset);
                 if col >= V_SCANLINE_MAX {
                     // Don't draw sprites off screen
                     continue;
