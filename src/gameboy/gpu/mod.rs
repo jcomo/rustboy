@@ -591,7 +591,6 @@ impl GPU {
         }
 
         let y_pos = self.current_line.wrapping_sub(window_y);
-        let tile_row = y_pos / 8;
 
         for col in 0..V_SCANLINE_MAX {
             if col < window_x {
@@ -599,26 +598,17 @@ impl GPU {
             }
 
             let x_pos = col.wrapping_sub(window_x);
-            let tile_col = x_pos / 8;
-            let tile = self.get_window_tile(tile_row, tile_col);
-
-            let color = tile.get_color(y_pos % 8, x_pos % 8);
-            let color = self.bg_palette.map(color);
+            let color = self.get_window_pixel(y_pos, x_pos);
             self.display.set_pixel(col, self.current_line, color);
         }
     }
 
     fn draw_bg(&mut self) {
         let y_pos = self.current_line.wrapping_add(self.scroll_y);
-        let tile_row = y_pos / 8;
 
         for col in 0..V_SCANLINE_MAX {
             let x_pos = col.wrapping_add(self.scroll_x);
-            let tile_col = x_pos / 8;
-            let tile = self.get_bg_tile(tile_row, tile_col);
-
-            let color = tile.get_color(y_pos % 8, x_pos % 8);
-            let color = self.bg_palette.map(color);
+            let color = self.get_bg_pixel(y_pos, x_pos);
             self.display.set_pixel(col, self.current_line, color);
         }
     }
@@ -685,12 +675,24 @@ impl GPU {
         return y_pos <= line && line < (y_pos + y_size);
     }
 
-    fn get_bg_tile(&self, row: u8, col: u8) -> &Tile {
-        self.get_tile(row, col, self.control.bg_map)
+    fn get_bg_pixel(&self, y_pos: u8, x_pos: u8) -> Color {
+        self.get_pixel(y_pos, x_pos, self.control.bg_map)
     }
 
-    fn get_window_tile(&self, row: u8, col: u8) -> &Tile {
-        self.get_tile(row, col, self.control.window_map)
+    fn get_window_pixel(&self, y_pos: u8, x_pos: u8) -> Color {
+        self.get_pixel(y_pos, x_pos, self.control.window_map)
+    }
+
+    fn get_pixel(&self, y_pos: u8, x_pos: u8, map_select_bit: bool) -> Color {
+        let tile_row = y_pos / 8;
+        let tile_col = x_pos / 8;
+        let tile = self.get_tile(tile_row, tile_col, map_select_bit);
+
+        let tile_y = y_pos % 8;
+        let tile_x = x_pos % 8;
+        let raw_color = tile.get_color(tile_y, tile_x);
+
+        self.bg_palette.map(raw_color)
     }
 
     /// Given a tile row and col, and tile map, returns the tile via the proper semantics
