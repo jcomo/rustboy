@@ -144,10 +144,10 @@ mod test {
         let mut ram = [1; 0x8000];
 
         mbc.ram_enabled = false;
-        assert_eq!(0xFF, mbc.read_ram(&ram, 0x40));
+        assert_eq!(0xFF, mbc.read_ram(&ram, 0xA040));
 
         mbc.ram_enabled = true;
-        assert_eq!(1, mbc.read_ram(&ram, 0x40));
+        assert_eq!(1, mbc.read_ram(&ram, 0xA040));
     }
 
     #[test]
@@ -221,17 +221,17 @@ mod test {
         let mut ram = [1; 0x8000];
 
         mbc.ram_enabled = false;
-        mbc.write_ram(&mut ram, 0x1000, 0);
+        mbc.write_ram(&mut ram, 0xB000, 0);
 
         assert_eq!(1, ram[0x1000]);
 
         mbc.ram_enabled = true;
-        mbc.write_ram(&mut ram, 0x1000, 0);
+        mbc.write_ram(&mut ram, 0xB000, 0);
 
         assert_eq!(0, ram[0x1000]);
 
         mbc.ram_bank = 0b10;
-        mbc.write_ram(&mut ram, 0x1000, 5);
+        mbc.write_ram(&mut ram, 0xB000, 5);
 
         assert_eq!(5, ram[0x5000]);
     }
