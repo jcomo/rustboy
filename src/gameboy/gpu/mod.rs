@@ -570,7 +570,11 @@ impl GPU {
 
     fn draw_scanline(&mut self) {
         if self.control.bg_on {
-            self.draw_tiles();
+            self.draw_bg();
+        }
+
+        if self.control.window_on {
+            self.draw_window();
         }
 
         if self.control.obj_on {
@@ -578,18 +582,33 @@ impl GPU {
         }
     }
 
-    // TODO: handle window drawing
-    fn draw_tiles(&mut self) {
+    fn draw_window(&mut self) {
+        let window_y = self.window_y;
+        let window_x = self.window_x.wrapping_sub(7);
+
+        if self.current_line < window_y {
+            return;
+        }
+
+        let y_pos = self.current_line.wrapping_sub(window_y);
+
+        for col in 0..V_SCANLINE_MAX {
+            if col < window_x {
+                continue;
+            }
+
+            let x_pos = col.wrapping_sub(window_x);
+            let color = self.get_window_pixel(y_pos, x_pos);
+            self.display.set_pixel(col, self.current_line, color);
+        }
+    }
+
+    fn draw_bg(&mut self) {
         let y_pos = self.current_line.wrapping_add(self.scroll_y);
-        let tile_row = y_pos / 8;
 
         for col in 0..V_SCANLINE_MAX {
             let x_pos = col.wrapping_add(self.scroll_x);
-            let tile_col = x_pos / 8;
-            let tile = self.get_tile(tile_row, tile_col);
-
-            let color = tile.get_color(y_pos % 8, x_pos % 8);
-            let color = self.bg_palette.map(color);
+            let color = self.get_bg_pixel(y_pos, x_pos);
             self.display.set_pixel(col, self.current_line, color);
         }
     }
@@ -637,7 +656,7 @@ impl GPU {
                     continue;
                 }
 
-                let col = sprite.get_x() + x_offset;
+                let col = sprite.get_x().wrapping_add(x_offset);
                 if col >= V_SCANLINE_MAX {
                     // Don't draw sprites off screen
                     continue;
@@ -656,11 +675,30 @@ impl GPU {
         return y_pos <= line && line < (y_pos + y_size);
     }
 
-    /// Given a tile row and col, returns the tile via the proper semantics
+    fn get_bg_pixel(&self, y_pos: u8, x_pos: u8) -> Color {
+        self.get_pixel(y_pos, x_pos, self.control.bg_map)
+    }
+
+    fn get_window_pixel(&self, y_pos: u8, x_pos: u8) -> Color {
+        self.get_pixel(y_pos, x_pos, self.control.window_map)
+    }
+
+    fn get_pixel(&self, y_pos: u8, x_pos: u8, map_select_bit: bool) -> Color {
+        let tile_row = y_pos / 8;
+        let tile_col = x_pos / 8;
+        let tile = self.get_tile(tile_row, tile_col, map_select_bit);
+
+        let tile_y = y_pos % 8;
+        let tile_x = x_pos % 8;
+        let raw_color = tile.get_color(tile_y, tile_x);
+
+        self.bg_palette.map(raw_color)
+    }
+
+    /// Given a tile row and col, and tile map, returns the tile via the proper semantics
     /// by doing a lookup for the number and then the data using LCDC register
-    fn get_tile(&self, row: u8, col: u8) -> &Tile {
-        // TODO: add option for choosing window tiles
-        let tile_map = if self.control.bg_map {
+    fn get_tile(&self, row: u8, col: u8, map_select_bit: bool) -> &Tile {
+        let tile_map = if map_select_bit {
             &self.tile_map_1
         } else {
             &self.tile_map_0
