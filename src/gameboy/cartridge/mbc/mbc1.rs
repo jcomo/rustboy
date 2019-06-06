@@ -45,9 +45,9 @@ impl MBC for MBC1 {
 
     fn read_ram(&self, ram: &[u8], address: u16) -> u8 {
         if self.ram_enabled {
+            let relative_address = (address - 0xA000) as usize;
             let offset = 0x2000 * self.get_ram_bank();
-            let index = (address as usize) + offset;
-            ram[index]
+            ram[relative_address + offset]
         } else {
             0xff
         }
@@ -82,9 +82,9 @@ impl MBC for MBC1 {
 
     fn write_ram(&mut self, ram: &mut [u8], address: u16, byte: u8) {
         if self.ram_enabled {
+            let relative_address = (address - 0xA000) as usize;
             let offset = 0x2000 * self.get_ram_bank();
-            let index = (address as usize) + offset;
-            ram[index] = byte;
+            ram[relative_address + offset] = byte;
         }
     }
 }
