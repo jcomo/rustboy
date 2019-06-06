@@ -1,6 +1,4 @@
 /target
 **/*.rs.bk
 
-/roms/tetris.gb
-/roms/dr-mario.gb
-/roms/donkey-kong.gb
+/roms
