@@ -3,7 +3,6 @@ mod display;
 mod gameboy;
 
 use crate::display::SDLFrontend;
-use crate::gameboy::GameBoy;
 
 use std::env;
 use std::fs;

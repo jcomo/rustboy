@@ -5,15 +5,20 @@ pub trait VideoDisplay {
     fn vsync(&mut self);
 }
 
-pub struct NoDisplay {}
+#[cfg(test)]
+pub mod test {
+    use super::*;
 
-impl NoDisplay {
-    pub fn new() -> NoDisplay {
-        NoDisplay {}
+    pub struct NoDisplay {}
+
+    impl NoDisplay {
+        pub fn new() -> NoDisplay {
+            NoDisplay {}
+        }
     }
-}
 
-impl VideoDisplay for NoDisplay {
-    fn set_pixel(&mut self, x: u8, y: u8, color: Color) {}
-    fn vsync(&mut self) {}
+    impl VideoDisplay for NoDisplay {
+        fn set_pixel(&mut self, _x: u8, _y: u8, _color: Color) {}
+        fn vsync(&mut self) {}
+    }
 }

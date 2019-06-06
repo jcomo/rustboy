@@ -1,5 +1,4 @@
 use crate::bits;
-use crate::gameboy::display::NoDisplay;
 use crate::gameboy::display::VideoDisplay;
 use crate::gameboy::irq::Interrupt;
 use crate::gameboy::irq::IRQ;
@@ -724,6 +723,7 @@ impl GPU {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::gameboy::display::test::NoDisplay;
 
     impl GPU {
         fn test() -> GPU {
@@ -861,7 +861,6 @@ mod test {
     #[test]
     fn gpu_stat() {
         let mut gpu = GPU::test();
-        let stat = Stat::from(0xFF);
 
         gpu.set_stat(0xFF);
 

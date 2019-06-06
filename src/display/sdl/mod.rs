@@ -148,7 +148,7 @@ impl VideoDisplay for SDLDisplay {
         };
 
         self.canvas.set_draw_color(sdl_color);
-        self.canvas.fill_rect(pixel);
+        self.canvas.fill_rect(pixel).unwrap();
     }
 
     fn vsync(&mut self) {

@@ -67,12 +67,3 @@ impl Clock for WallClock {
         }
     }
 }
-
-/// A clock that runs as fast as the host
-pub struct NoClock;
-
-impl Clock for NoClock {
-    fn tick(&mut self, cycles: u8) {
-        // Do nothing
-    }
-}

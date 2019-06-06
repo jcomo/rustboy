@@ -61,20 +61,6 @@ impl Registers {
         self.c = bits::lsb_16(value);
     }
 
-    /// Increments the BC register; returns the old value
-    pub fn increment_bc(&mut self) -> u16 {
-        let old_value = self.get_bc();
-        self.set_bc(old_value.wrapping_add(1));
-        old_value
-    }
-
-    /// Decrements the BC register; returns the old value
-    pub fn decrement_bc(&mut self) -> u16 {
-        let old_value = self.get_bc();
-        self.set_bc(old_value.wrapping_sub(1));
-        old_value
-    }
-
     pub fn get_de(&self) -> u16 {
         bits::to_word(self.d, self.e)
     }
@@ -84,20 +70,6 @@ impl Registers {
         self.e = bits::lsb_16(value);
     }
 
-    /// Increments the DE register; returns the old value
-    pub fn increment_de(&mut self) -> u16 {
-        let old_value = self.get_de();
-        self.set_de(old_value.wrapping_add(1));
-        old_value
-    }
-
-    /// Decrements the DE register; returns the old value
-    pub fn decrement_de(&mut self) -> u16 {
-        let old_value = self.get_de();
-        self.set_de(old_value.wrapping_sub(1));
-        old_value
-    }
-
     pub fn get_hl(&self) -> u16 {
         bits::to_word(self.h, self.l)
     }
@@ -105,20 +77,6 @@ impl Registers {
     pub fn set_hl(&mut self, value: u16) {
         self.h = bits::msb_16(value);
         self.l = bits::lsb_16(value);
-    }
-
-    /// Increments the HL register; returns the old value
-    pub fn increment_hl(&mut self) -> u16 {
-        let old_value = self.get_hl();
-        self.set_hl(old_value.wrapping_add(1));
-        old_value
-    }
-
-    /// Decrements the HL register; returns the old value
-    pub fn decrement_hl(&mut self) -> u16 {
-        let old_value = self.get_hl();
-        self.set_hl(old_value.wrapping_sub(1));
-        old_value
     }
 }
 
@@ -176,12 +134,6 @@ mod test {
         assert_eq!(regs.b, 0xF1);
         assert_eq!(regs.c, 0x23);
         assert_eq!(regs.get_bc(), 0xF123);
-
-        assert_eq!(regs.increment_bc(), 0xF123);
-        assert_eq!(regs.get_bc(), 0xF124);
-
-        assert_eq!(regs.decrement_bc(), 0xF124);
-        assert_eq!(regs.get_bc(), 0xF123);
     }
 
     #[test]
@@ -193,9 +145,6 @@ mod test {
         assert_eq!(regs.d, 0xF1);
         assert_eq!(regs.e, 0x23);
         assert_eq!(regs.get_de(), 0xF123);
-
-        assert_eq!(regs.increment_de(), 0xF123);
-        assert_eq!(regs.get_de(), 0xF124);
     }
 
     #[test]
@@ -206,12 +155,6 @@ mod test {
 
         assert_eq!(regs.h, 0xF1);
         assert_eq!(regs.l, 0x23);
-        assert_eq!(regs.get_hl(), 0xF123);
-
-        assert_eq!(regs.increment_hl(), 0xF123);
-        assert_eq!(regs.get_hl(), 0xF124);
-
-        assert_eq!(regs.decrement_hl(), 0xF124);
         assert_eq!(regs.get_hl(), 0xF123);
     }
 }

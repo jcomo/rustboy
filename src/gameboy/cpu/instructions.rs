@@ -135,10 +135,8 @@ impl Check {
 pub fn execute(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
     if op == 0xCB {
         let op = cpu.get_byte(memory);
-        debug(&format!("op code: 0xCB{:X}", op));
         execute_extended(op, cpu, memory);
     } else {
-        debug(&format!("op code: 0x{:X}", op));
         execute_standard(op, cpu, memory);
     }
 }
@@ -156,7 +154,7 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x04 => inc_8(cpu, memory, B),
         0x05 => dec_8(cpu, memory, B),
         0x06 => load_8(cpu, memory, B, Imm8),
-        0x07 => rlca(cpu, memory),
+        0x07 => rlca(cpu),
         0x08 => load_16(cpu, memory, Imm16, SP),
         0x09 => add_16(cpu, memory, BC),
         0x0A => load_8(cpu, memory, A, AddrBC),
@@ -164,14 +162,14 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x0C => inc_8(cpu, memory, C),
         0x0D => dec_8(cpu, memory, C),
         0x0E => load_8(cpu, memory, C, Imm8),
-        0x0F => rrca(cpu, memory),
+        0x0F => rrca(cpu),
         0x11 => load_16(cpu, memory, DE, Imm16),
         0x12 => load_8(cpu, memory, AddrDE, A),
         0x13 => inc_16(cpu, memory, DE),
         0x14 => inc_8(cpu, memory, D),
         0x15 => dec_8(cpu, memory, D),
         0x16 => load_8(cpu, memory, D, Imm8),
-        0x17 => rla(cpu, memory),
+        0x17 => rla(cpu),
         0x18 => jr_n(cpu, memory, Check::True),
         0x19 => add_16(cpu, memory, DE),
         0x1A => load_8(cpu, memory, A, AddrDE),
@@ -179,7 +177,7 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x1C => inc_8(cpu, memory, E),
         0x1D => dec_8(cpu, memory, E),
         0x1E => load_8(cpu, memory, E, Imm8),
-        0x1F => rra(cpu, memory),
+        0x1F => rra(cpu),
         0x20 => jr_n(cpu, memory, Check::NZ),
         0x21 => load_16(cpu, memory, HL, Imm16),
         0x22 => ldi(cpu, memory, AddrHL, A),
@@ -187,7 +185,7 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
         0x24 => inc_8(cpu, memory, H),
         0x25 => dec_8(cpu, memory, H),
         0x26 => load_8(cpu, memory, H, Imm8),
-        0x27 => daa(cpu, memory),
+        0x27 => daa(cpu),
         0x28 => jr_n(cpu, memory, Check::Z),
         0x29 => add_16(cpu, memory, HL),
         0x2A => ldi(cpu, memory, A, AddrHL),
@@ -401,7 +399,6 @@ fn execute_standard(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
 
 /// Execute commands in the extended instruction space
 fn execute_extended(op: u8, cpu: &mut CPU, memory: &mut MemoryBus) {
-    use self::Loc16::*;
     use self::Loc8::*;
 
     match op {
@@ -818,7 +815,7 @@ fn cp(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
 }
 
 // See: http://gbdev.gg8.se/wiki/articles/DAA or page 122 in the "Game Boy Programming Manual"
-fn daa(cpu: &mut CPU, memory: &mut MemoryBus) {
+fn daa(cpu: &mut CPU) {
     let n = cpu.registers.f.subtract;
     let c = cpu.registers.f.carry;
     let h = cpu.registers.f.half_carry;
@@ -932,7 +929,7 @@ fn srl(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
     loc.write(cpu, memory, result);
 }
 
-fn rrca(cpu: &mut CPU, memory: &mut MemoryBus) {
+fn rrca(cpu: &mut CPU) {
     let value = cpu.registers.a;
     let result = value.rotate_right(1);
 
@@ -943,7 +940,7 @@ fn rrca(cpu: &mut CPU, memory: &mut MemoryBus) {
     cpu.registers.a = result;
 }
 
-fn rra(cpu: &mut CPU, memory: &mut MemoryBus) {
+fn rra(cpu: &mut CPU) {
     let value = cpu.registers.a;
     let carry = bits::from_bool(cpu.registers.f.carry);
     let result = (carry << 7) | (value >> 1);
@@ -978,7 +975,7 @@ fn rr(cpu: &mut CPU, memory: &mut MemoryBus, loc: Loc8) {
     loc.write(cpu, memory, result);
 }
 
-fn rlca(cpu: &mut CPU, memory: &mut MemoryBus) {
+fn rlca(cpu: &mut CPU) {
     let value = cpu.registers.a;
     let result = value.rotate_left(1);
 
@@ -989,7 +986,7 @@ fn rlca(cpu: &mut CPU, memory: &mut MemoryBus) {
     cpu.registers.a = result;
 }
 
-fn rla(cpu: &mut CPU, memory: &mut MemoryBus) {
+fn rla(cpu: &mut CPU) {
     let value = cpu.registers.a;
     let carry = bits::from_bool(cpu.registers.f.carry);
     let result = (value << 1) | carry;
@@ -1146,8 +1143,4 @@ fn jr_n(cpu: &mut CPU, memory: &mut MemoryBus, check: Check) {
         // eg. 0xeb (i8) becomes 0xffeb (u16)
         cpu.registers.add_pc(offset as u16);
     }
-}
-
-fn debug(label: &str) {
-    // println!("{}", label)
 }

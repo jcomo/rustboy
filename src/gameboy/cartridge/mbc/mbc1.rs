@@ -132,7 +132,7 @@ mod test {
     #[test]
     fn read_rom_bank1_overflow_u16() {
         let mut mbc = MBC1::new();
-        let mut rom = [0; 0x1FFFF];
+        let rom = [0; 0x1FFFF];
 
         mbc.rom_bank_lower_bits = 0x05;
         assert_eq!(0, mbc.read_rom_bank1(&rom, 0x4001));
@@ -141,7 +141,7 @@ mod test {
     #[test]
     fn read_ram() {
         let mut mbc = MBC1::new();
-        let mut ram = [1; 0x8000];
+        let ram = [1; 0x8000];
 
         mbc.ram_enabled = false;
         assert_eq!(0xFF, mbc.read_ram(&ram, 0xA040));

@@ -13,17 +13,11 @@ impl MBC for NoMBC {
         rom[address as usize]
     }
 
-    fn read_ram(&self, ram: &[u8], address: u16) -> u8 {
+    fn read_ram(&self, _ram: &[u8], _address: u16) -> u8 {
         0xff
     }
 
-    fn write_registers(&mut self, address: u16, byte: u8) {}
+    fn write_registers(&mut self, _address: u16, _byte: u8) {}
 
-    fn write_ram(&mut self, ram: &mut [u8], address: u16, byte: u8) {}
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
+    fn write_ram(&mut self, _ram: &mut [u8], _address: u16, _byte: u8) {}
 }
